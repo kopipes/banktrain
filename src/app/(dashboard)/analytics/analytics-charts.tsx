@@ -12,6 +12,49 @@ interface DivisionEntry {
   overBudget: boolean;
 }
 
+interface TopUser {
+  userId: string | null;
+  totalCost: string | null;
+  count: number;
+  userName: string | null;
+  division: string | null;
+}
+
+export function TopUsersTable({ topUsers }: { topUsers: TopUser[] }) {
+  if (!topUsers.length) return null;
+  return (
+    <div className="rounded-2xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
+      <table className="w-full text-sm">
+        <thead className="border-b border-[var(--border)]" style={{ background: "var(--surface-2)" }}>
+          <tr>
+            {["Name", "Division", "Generations", "Cost"].map((h) => (
+              <th key={h} className="text-left px-5 py-3 text-xs font-bold text-[var(--foreground-muted)] uppercase tracking-wider">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--border)]">
+          {topUsers.map((u, i) => (
+            <tr
+              key={u.userId ?? i}
+              className="transition-colors"
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+            >
+              <td className="px-5 py-3 font-medium text-[var(--foreground)]">{u.userName}</td>
+              <td className="px-5 py-3 capitalize text-[var(--foreground-muted)]">{u.division}</td>
+              <td className="px-5 py-3 text-[var(--foreground-muted)]">{u.count}</td>
+              <td className="px-5 py-3 font-semibold text-[var(--accent)]">{formatIdr(Number(u.totalCost ?? 0))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
 /**
  * Client component for visual analytics charts.
  * Uses pure CSS/HTML bars (no external chart lib required).

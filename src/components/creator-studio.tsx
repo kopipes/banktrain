@@ -11,7 +11,7 @@ import { buildFullPrompt, formatIdr } from "@/lib/utils";
 import type { AiModel } from "@/db/schema";
 import {
   Wand2, RefreshCw, BookmarkPlus, Globe, Copy,
-  MessageSquare, X, ChevronDown, ChevronUp, Info,
+  MessageSquare, X, ChevronDown, ChevronUp, Info, Upload, ImageIcon,
 } from "lucide-react";
 
 interface CreatorStudioProps {
@@ -75,6 +75,24 @@ export function CreatorStudio({
     llmModels.find((m) => m.isDefault)?.id ?? llmModels[0]?.id ?? ""
   );
 
+  // Generation type + image-to-image input
+  const [generationType, setGenerationType] = useState<"text-to-image" | "image-to-image">("text-to-image");
+  const [inputImageUrl, setInputImageUrl] = useState<string>("");
+  const [inputImagePreview, setInputImagePreview] = useState<string>("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setInputImageUrl(dataUrl);
+      setInputImagePreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
   // State
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -106,6 +124,27 @@ export function CreatorStudio({
   const selectedModel = imageModels.find((m) => m.id === selectedImageModel);
   const estimatedCost = selectedModel?.pricePerImage ?? 0;
 
+  // Derive supported generation types from the model's modelId and provider
+  // kie.ai encodes the type in the model ID (e.g. "gpt-image-2-image-to-image")
+  // For OpenAI-compatible models, only text-to-image is supported
+  const supportsImageToImage = selectedModel
+    ? selectedModel.provider === "kie.ai"
+      ? selectedModel.modelId.includes("image-to-image") ||
+        selectedModel.modelId.includes("edit") ||
+        selectedModel.modelId.includes("remix") ||
+        selectedModel.modelId.includes("kontext")
+      : false
+    : false;
+
+  // If model changes and no longer supports current generation type, reset to text-to-image
+  useEffect(() => {
+    if (!supportsImageToImage && generationType === "image-to-image") {
+      setGenerationType("text-to-image");
+      setInputImageUrl("");
+      setInputImagePreview("");
+    }
+  }, [selectedImageModel, supportsImageToImage, generationType]);
+
   async function handleGenerate() {
     if (!computedPrompt.trim()) {
       setError("Please fill in at least the subject field.");
@@ -130,6 +169,8 @@ export function CreatorStudio({
           cfgScale, steps, aspectRatio,
           modelId: selectedImageModel,
           isPublic,
+          generationType,
+          inputImageUrl: generationType === "image-to-image" ? inputImageUrl : undefined,
         }),
       });
       const data = await res.json();
@@ -220,6 +261,77 @@ export function CreatorStudio({
             ))}
           </Select>
         </div>
+
+        {/* Generation Type — only shown when model supports image-to-image */}
+        {supportsImageToImage && (
+          <div className="mb-4">
+            <Label>Generation Type</Label>
+            <div className="flex gap-2 mt-1">
+              {(["text-to-image", "image-to-image"] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setGenerationType(type);
+                    if (type === "text-to-image") {
+                      setInputImageUrl("");
+                      setInputImagePreview("");
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                    generationType === type
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300"
+                  }`}
+                >
+                  {type === "text-to-image" ? <Wand2 className="h-3.5 w-3.5" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                  {type === "text-to-image" ? "Text to Image" : "Image to Image"}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Image upload — only for image-to-image */}
+        {generationType === "image-to-image" && (
+          <div className="mb-4">
+            <Label>Input Image</Label>
+            <div className="mt-1">
+              {inputImagePreview ? (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={inputImagePreview}
+                    alt="Input"
+                    className="w-full h-40 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    onClick={() => { setInputImageUrl(""); setInputImagePreview(""); }}
+                    className="absolute top-1.5 right-1.5 bg-white rounded-full p-0.5 shadow hover:bg-red-50"
+                    aria-label="Remove image"
+                  >
+                    <X className="h-3.5 w-3.5 text-gray-600" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="w-full h-32 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-indigo-300 hover:text-indigo-400 transition-colors"
+                >
+                  <Upload className="h-5 w-5" />
+                  <span className="text-sm">Click to upload image</span>
+                  <span className="text-xs">PNG, JPG, WEBP up to 30MB</span>
+                </button>
+              )}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Prompt mode */}
         <div className="flex items-center gap-2 mb-4">

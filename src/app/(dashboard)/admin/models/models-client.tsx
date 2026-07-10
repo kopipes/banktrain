@@ -35,6 +35,47 @@ type TestResult = {
   status?: number;
 };
 
+const PROVIDERS = [
+  { value: "openai",   label: "OpenAI",         baseUrl: "https://api.openai.com/v1" },
+  { value: "together", label: "Together AI",     baseUrl: "https://api.together.xyz/v1" },
+  { value: "kie.ai",   label: "kie.ai",          baseUrl: "https://api.kie.ai" },
+  { value: "custom",   label: "Custom / Other",  baseUrl: "" },
+];
+
+// kie.ai model catalog — grouped by provider/family
+// Each entry: value = model ID sent to API, label = display name, modes = supported generation types
+const KIEAI_MODELS: { value: string; label: string; modes: string[] }[] = [
+  // OpenAI GPT Image
+  { value: "gpt-image-2-text-to-image",        label: "GPT Image 2 — Text to Image",       modes: ["text-to-image"] },
+  { value: "gpt-image-2-image-to-image",        label: "GPT Image 2 — Image to Image",      modes: ["image-to-image"] },
+  // Google Imagen 4
+  { value: "google/imagen4",                    label: "Google Imagen 4",                   modes: ["text-to-image"] },
+  { value: "google/imagen4-fast",               label: "Google Imagen 4 Fast",              modes: ["text-to-image"] },
+  { value: "google/imagen4-ultra",              label: "Google Imagen 4 Ultra",             modes: ["text-to-image"] },
+  // FLUX 2
+  { value: "flux-2/pro-text-to-image",          label: "FLUX 2 Pro — Text to Image",        modes: ["text-to-image"] },
+  { value: "flux-2/pro-image-to-image",         label: "FLUX 2 Pro — Image to Image",       modes: ["image-to-image"] },
+  { value: "flux-2/flex-text-to-image",         label: "FLUX 2 Flex — Text to Image",       modes: ["text-to-image"] },
+  { value: "flux-2/flex-image-to-image",        label: "FLUX 2 Flex — Image to Image",      modes: ["image-to-image"] },
+  // FLUX Kontext
+  { value: "flux1-kontext",                     label: "FLUX 1 Kontext",                    modes: ["image-to-image"] },
+  // Ideogram v3
+  { value: "ideogram/v3-text-to-image",         label: "Ideogram v3 — Text to Image",       modes: ["text-to-image"] },
+  { value: "ideogram/v3-remix",                 label: "Ideogram v3 — Remix",               modes: ["image-to-image"] },
+  { value: "ideogram/v3-edit",                  label: "Ideogram v3 — Edit",                modes: ["image-to-image"] },
+  // Grok Imagine
+  { value: "grok-imagine/text-to-image",        label: "Grok Imagine — Text to Image",      modes: ["text-to-image"] },
+  { value: "grok-imagine/image-to-image",       label: "Grok Imagine — Image to Image",     modes: ["image-to-image"] },
+  // ByteDance Seedream
+  { value: "seedream/5-pro-text-to-image",      label: "Seedream 5 Pro — Text to Image",    modes: ["text-to-image"] },
+  { value: "seedream/5-pro-image-to-image",     label: "Seedream 5 Pro — Image to Image",   modes: ["image-to-image"] },
+  // Google Nano Banana
+  { value: "google/nano-banana",                label: "Nano Banana — Text to Image",        modes: ["text-to-image"] },
+  { value: "google/nano-banana-edit",           label: "Nano Banana — Edit (Image to Image)", modes: ["image-to-image"] },
+  { value: "nano-banana-2",                     label: "Nano Banana 2",                      modes: ["text-to-image"] },
+  { value: "nano-banana-pro",                   label: "Nano Banana Pro",                    modes: ["text-to-image"] },
+];
+
 const emptyForm: ModelForm = {
   name: "", provider: "", baseUrl: "", apiKey: "", modelId: "",
   type: "image", pricePerToken: 0, pricePerImage: 0, isDefault: false,
@@ -90,6 +131,7 @@ function ModelFormFields({
           apiKey: form.apiKey,
           modelIdentifier: form.modelId,
           type: form.type,
+          provider: form.provider,
           ...(isEdit && savedModelId ? { modelId: savedModelId } : {}),
         }),
       });
@@ -102,6 +144,8 @@ function ModelFormFields({
     }
   }
 
+  const isKieAi = form.provider === "kie.ai";
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -112,18 +156,47 @@ function ModelFormFields({
         </div>
         <div>
           <Label htmlFor="mf-provider">Provider</Label>
-          <Input id="mf-provider" className="mt-1" required placeholder="openai, together, custom"
-            value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })} />
+          <Select id="mf-provider" className="mt-1" required value={form.provider}
+            onChange={(e) => {
+              const p = e.target.value;
+              const providerDef = PROVIDERS.find((x) => x.value === p);
+              setForm({
+                ...form,
+                provider: p,
+                baseUrl: providerDef?.baseUrl || form.baseUrl,
+                // reset modelId when switching to kie.ai so user picks from dropdown
+                modelId: p === "kie.ai" ? KIEAI_MODELS[0].value : (p !== form.provider ? "" : form.modelId),
+                type: p === "kie.ai" ? "image" : form.type,
+              });
+              setTestResult(null);
+            }}>
+            <option value="">Select provider…</option>
+            {PROVIDERS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </Select>
         </div>
         <div>
           <Label htmlFor="mf-baseurl">Base URL</Label>
-          <Input id="mf-baseurl" className="mt-1" required placeholder="https://api.openai.com/v1"
-            value={form.baseUrl} onChange={(e) => { setForm({ ...form, baseUrl: e.target.value }); setTestResult(null); }} />
+          <Input id="mf-baseurl" className="mt-1" required
+            placeholder="https://api.openai.com/v1"
+            value={form.baseUrl}
+            readOnly={isKieAi}
+            onChange={(e) => { setForm({ ...form, baseUrl: e.target.value }); setTestResult(null); }} />
         </div>
         <div>
           <Label htmlFor="mf-modelid">Model ID</Label>
-          <Input id="mf-modelid" className="mt-1" required placeholder="dall-e-3, gpt-4o-mini..."
-            value={form.modelId} onChange={(e) => { setForm({ ...form, modelId: e.target.value }); setTestResult(null); }} />
+          {isKieAi ? (
+            <Select id="mf-modelid" className="mt-1" required value={form.modelId}
+              onChange={(e) => { setForm({ ...form, modelId: e.target.value }); setTestResult(null); }}>
+              {KIEAI_MODELS.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </Select>
+          ) : (
+            <Input id="mf-modelid" className="mt-1" required placeholder="dall-e-3, gpt-4o-mini..."
+              value={form.modelId} onChange={(e) => { setForm({ ...form, modelId: e.target.value }); setTestResult(null); }} />
+          )}
         </div>
         <div>
           <Label htmlFor="mf-apikey">
@@ -261,6 +334,7 @@ export function AdminModelsClient({ initialModels }: { initialModels: SafeModel[
   // Create state
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<ModelForm>(emptyForm);
+  const [selectedKieModels, setSelectedKieModels] = useState<Set<string>>(new Set());
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
 
@@ -274,16 +348,45 @@ export function AdminModelsClient({ initialModels }: { initialModels: SafeModel[
     e.preventDefault();
     setCreateLoading(true);
     setCreateError("");
-    const res = await fetch("/api/admin/models", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(createForm),
-    });
-    const data = await res.json();
+
+    const isKieAiCreate = createForm.provider === "kie.ai";
+
+    if (isKieAiCreate && selectedKieModels.size === 0) {
+      setCreateError("Select at least one kie.ai model.");
+      setCreateLoading(false);
+      return;
+    }
+
+    // For kie.ai: create one DB entry per selected model
+    const modelsToCreate = isKieAiCreate
+      ? Array.from(selectedKieModels).map((modelId) => {
+          const modelDef = KIEAI_MODELS.find((m) => m.value === modelId);
+          return {
+            ...createForm,
+            modelId,
+            name: modelDef ? `kie.ai — ${modelDef.label}` : `kie.ai — ${modelId}`,
+          };
+        })
+      : [createForm];
+
+    for (const payload of modelsToCreate) {
+      const res = await fetch("/api/admin/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateError(data.error ?? "Failed to create model.");
+        setCreateLoading(false);
+        return;
+      }
+    }
+
     setCreateLoading(false);
-    if (!res.ok) { setCreateError(data.error); return; }
     setShowCreate(false);
     setCreateForm(emptyForm);
+    setSelectedKieModels(new Set());
     router.refresh();
   }
 
@@ -324,8 +427,13 @@ export function AdminModelsClient({ initialModels }: { initialModels: SafeModel[
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Deactivate this model?")) return;
-    await fetch(`/api/admin/models?id=${id}`, { method: "DELETE" });
+    if (!confirm("Delete this model? This cannot be undone.")) return;
+    const res = await fetch(`/api/admin/models?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error ?? "Failed to delete model.");
+      return;
+    }
     router.refresh();
   }
 
@@ -353,13 +461,65 @@ export function AdminModelsClient({ initialModels }: { initialModels: SafeModel[
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreate}>
-              <ModelFormFields form={createForm} setForm={setCreateForm} />
+              <ModelFormFields form={createForm} setForm={(f) => {
+                // Reset selected kie models when provider changes
+                if (f.provider !== createForm.provider) setSelectedKieModels(new Set());
+                setCreateForm(f);
+              }} />
+
+              {/* kie.ai multi-model selector */}
+              {createForm.provider === "kie.ai" && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Select Models to Add</Label>
+                    <div className="flex gap-2">
+                      <button type="button" className="text-xs text-[var(--accent)] hover:underline"
+                        onClick={() => setSelectedKieModels(new Set(KIEAI_MODELS.map(m => m.value)))}>
+                        All
+                      </button>
+                      <button type="button" className="text-xs text-[var(--foreground-muted)] hover:underline"
+                        onClick={() => setSelectedKieModels(new Set())}>
+                        None
+                      </button>
+                    </div>
+                  </div>
+                  <div className="border border-[var(--border)] rounded-lg overflow-hidden max-h-56 overflow-y-auto">
+                    {KIEAI_MODELS.map((m) => (
+                      <label key={m.value}
+                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[var(--surface-2)] border-b border-[var(--border)] last:border-b-0 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedKieModels.has(m.value)}
+                          onChange={(e) => {
+                            const next = new Set(selectedKieModels);
+                            e.target.checked ? next.add(m.value) : next.delete(m.value);
+                            setSelectedKieModels(next);
+                          }}
+                          className="accent-[var(--accent)] w-3.5 h-3.5 flex-shrink-0"
+                        />
+                        <span className="text-sm text-[var(--foreground)]">{m.label}</span>
+                        <span className="text-xs text-[var(--foreground-muted)] ml-auto flex-shrink-0">
+                          {m.modes[0]}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedKieModels.size > 0 && (
+                    <p className="text-xs text-[var(--foreground-muted)] mt-1.5">
+                      {selectedKieModels.size} model{selectedKieModels.size > 1 ? "s" : ""} will be added
+                    </p>
+                  )}
+                </div>
+              )}
+
               {createError && (
                 <p className="text-sm text-[var(--danger)] mt-3">{createError}</p>
               )}
               <div className="flex gap-2 mt-4">
-                <Button type="submit" isLoading={createLoading}>Add Model</Button>
-                <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+                <Button type="submit" isLoading={createLoading}>
+                  Add {createForm.provider === "kie.ai" && selectedKieModels.size > 1 ? `${selectedKieModels.size} Models` : "Model"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => { setShowCreate(false); setSelectedKieModels(new Set()); }}>Cancel</Button>
               </div>
             </form>
           </CardContent>

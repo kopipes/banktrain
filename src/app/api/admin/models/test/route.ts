@@ -13,6 +13,7 @@ const testSchema = z.object({
   apiKey: z.string().min(1),
   modelIdentifier: z.string().min(1), // the actual model name e.g. "dall-e-3"
   type: z.enum(["image", "llm"]),
+  provider: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -25,21 +26,61 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  let { baseUrl, apiKey, modelIdentifier, type, modelId } = parsed.data;
+  let { baseUrl, apiKey, modelIdentifier, type, modelId, provider } = parsed.data;
 
   // If editing a saved model and api key is masked, load the real key from DB
   if (modelId && apiKey.startsWith("***")) {
     const saved = await db.select().from(aiModels).where(eq(aiModels.id, modelId)).get();
     if (!saved) return NextResponse.json({ error: "Model not found" }, { status: 404 });
     apiKey = saved.apiKey;
+    if (!provider) provider = saved.provider;
   }
 
-  const client = new OpenAI({ apiKey, baseURL: baseUrl });
   const start = Date.now();
+
+  // ── kie.ai provider — uses async task/poll, not OpenAI-compatible ─────────
+  if (provider === "kie.ai") {
+    try {
+      const res = await fetch(`${baseUrl}/api/v1/jobs/createTask`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: modelIdentifier,
+          input: { prompt: "a white circle", aspect_ratio: "1:1", resolution: "1K" },
+        }),
+      });
+      const latency = Date.now() - start;
+      const data = await res.json() as { code?: number; msg?: string; data?: { taskId?: string } };
+
+      if (data.code === 200 && data.data?.taskId) {
+        return NextResponse.json({
+          ok: true,
+          type: "image",
+          latencyMs: latency,
+          message: `kie.ai connected successfully in ${latency}ms. Task created: ${data.data.taskId}`,
+        });
+      }
+      return NextResponse.json({
+        ok: false,
+        latencyMs: latency,
+        error: data.msg ?? "Unknown error",
+        message: `kie.ai connection failed: ${data.msg ?? "Unknown error"}`,
+      });
+    } catch (err) {
+      const latency = Date.now() - start;
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return NextResponse.json({ ok: false, latencyMs: latency, error: message, message: `Connection failed: ${message}` });
+    }
+  }
+
+  // ── OpenAI-compatible providers ───────────────────────────────────────────
+  const client = new OpenAI({ apiKey, baseURL: baseUrl });
 
   try {
     if (type === "llm") {
-      // Test with a minimal chat completion
       const res = await client.chat.completions.create({
         model: modelIdentifier,
         messages: [{ role: "user", content: "Say OK" }],
@@ -56,7 +97,6 @@ export async function POST(req: NextRequest) {
         message: `Connected successfully in ${latency}ms`,
       });
     } else {
-      // Test image model — use models.list() if available, otherwise a minimal generate
       // Try listing models first (cheapest call, no cost)
       try {
         const list = await client.models.list();
@@ -68,17 +108,18 @@ export async function POST(req: NextRequest) {
           latencyMs: latency,
           modelFound: found,
           message: found
-            ? `Connected — model "${modelIdentifier}" confirmed in ${latency}ms`
-            : `Connected but model "${modelIdentifier}" not found in provider list. Check Model ID.`,
+            ? `Connected successfully in ${latency}ms. Model confirmed.`
+            : `Connected in ${latency}ms, but model "${modelIdentifier}" not found in list — double-check the ID.`,
         });
       } catch {
-        // models.list() not supported by this provider — try a tiny generate
+        // models.list() not supported — try a tiny generate
         const res = await client.images.generate({
           model: modelIdentifier,
           prompt: "a white circle",
           n: 1,
           size: "256x256" as Parameters<typeof client.images.generate>[0]["size"],
         });
+        void res;
         const latency = Date.now() - start;
         return NextResponse.json({
           ok: true,
@@ -91,7 +132,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const latency = Date.now() - start;
     const message = err instanceof Error ? err.message : "Unknown error";
-    // Extract status code if available
     const status = (err as { status?: number }).status;
     return NextResponse.json({
       ok: false,

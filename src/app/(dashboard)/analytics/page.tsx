@@ -5,7 +5,7 @@ import { eq, sum, count, desc } from "drizzle-orm";
 import { currentMonthYear, formatIdr, formatNumber } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AnalyticsCharts } from "./analytics-charts";
+import { AnalyticsCharts, TopUsersTable } from "./analytics-charts";
 import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
 
@@ -189,34 +189,7 @@ export default async function AnalyticsPage() {
             <h2 className="text-xs font-bold text-[var(--foreground-muted)] uppercase tracking-widest mb-4">
               Top Users This Month
             </h2>
-            <div className="rounded-2xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
-              <table className="w-full text-sm">
-                <thead className="border-b border-[var(--border)]" style={{ background: "var(--surface-2)" }}>
-                  <tr>
-                    {["Name", "Division", "Generations", "Cost"].map((h) => (
-                      <th key={h} className="text-left px-5 py-3 text-xs font-bold text-[var(--foreground-muted)] uppercase tracking-wider">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {topUsers.map((u, i) => (
-                    <tr key={u.userId ?? i}
-                      className="transition-colors"
-                      style={{ ["--hover-bg" as string]: "var(--surface-2)" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                    >
-                      <td className="px-5 py-3 font-medium text-[var(--foreground)]">{u.userName}</td>
-                      <td className="px-5 py-3 capitalize text-[var(--foreground-muted)]">{u.division}</td>
-                      <td className="px-5 py-3 text-[var(--foreground-muted)]">{u.count}</td>
-                      <td className="px-5 py-3 font-semibold text-[var(--accent)]">{formatIdr(Number(u.totalCost ?? 0))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TopUsersTable topUsers={topUsers} />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth-utils";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { aiModels } from "@/db/schema";
+import { aiModels, generations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { z } from "zod";
@@ -94,6 +94,15 @@ export async function DELETE(req: NextRequest) {
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  await db.update(aiModels).set({ isActive: false }).where(eq(aiModels.id, id));
+  // Check if any generations reference this model
+  const linked = await db.select().from(generations).where(eq(generations.modelId, id)).get();
+  if (linked) {
+    return NextResponse.json(
+      { error: "Cannot delete — this model has generation history. Deactivate it instead." },
+      { status: 409 }
+    );
+  }
+
+  await db.delete(aiModels).where(eq(aiModels.id, id));
   return NextResponse.json({ success: true });
 }
