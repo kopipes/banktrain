@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Wand2, Images, Coins, Trophy, ArrowRight, Sparkles, Zap } from "lucide-react";
+import { RecentGenerationsGrid } from "./recent-generations";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -191,34 +192,10 @@ export default async function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              {recentGenerations.map((gen) => (
-                <div key={gen.id}
-                  className="group relative aspect-square rounded-xl overflow-hidden border border-[var(--border)] transition-all duration-300 hover:border-[var(--accent)] hover:scale-105 hover:shadow-[0_0_16px_rgba(108,99,255,0.3)] cursor-pointer"
-                  style={{ background: "var(--surface-2)" }}
-                >
-                  {gen.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={gen.imageUrl}
-                      alt={gen.fullPrompt}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-[10px] text-[var(--foreground-subtle)] capitalize">{gen.status}</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 flex items-end">
-                    {gen.style && (
-                      <Badge variant="secondary" className="text-[10px] truncate max-w-full">
-                        {gen.style}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RecentGenerationsGrid
+              generations={recentGenerations}
+              isAdmin={user.role === "admin"}
+            />
           )}
         </div>
       </div>
