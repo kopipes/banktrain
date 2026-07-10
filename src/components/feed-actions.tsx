@@ -1,0 +1,79 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { GitFork, BookmarkPlus } from "lucide-react";
+import { buildStudioUrl } from "@/lib/utils";
+
+interface Generation {
+  id: string;
+  fullPrompt: string;
+  style?: string | null;
+  cfgScale?: number | null;
+  seed?: number | null;
+  steps?: number | null;
+  aspectRatio?: string | null;
+  negativePrompt?: string | null;
+  subject?: string | null;
+  action?: string | null;
+  environment?: string | null;
+  lighting?: string | null;
+  colorPalette?: string | null;
+  imageUrl?: string | null;
+}
+
+export function FeedActions({ generation }: { generation: Generation }) {
+  const router = useRouter();
+
+  function handleRemix() {
+    router.push(
+      buildStudioUrl({
+        subject: generation.subject ?? "",
+        action: generation.action ?? "",
+        environment: generation.environment ?? "",
+        lighting: generation.lighting ?? "",
+        style: generation.style ?? "",
+        colorPalette: generation.colorPalette ?? "",
+        negativePrompt: generation.negativePrompt ?? "",
+        seed: generation.seed ?? undefined,
+        cfgScale: generation.cfgScale ?? 7,
+        steps: generation.steps ?? 30,
+        aspectRatio: generation.aspectRatio ?? "1:1",
+      })
+    );
+  }
+
+  async function handleSaveToLibrary() {
+    const title = prompt("Enter a title for this prompt:");
+    if (!title) return;
+    await fetch("/api/library", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        fullPrompt: generation.fullPrompt,
+        negativePrompt: generation.negativePrompt,
+        style: generation.style,
+        cfgScale: generation.cfgScale,
+        steps: generation.steps,
+        aspectRatio: generation.aspectRatio,
+        imageUrl: generation.imageUrl,
+        forkedFromId: generation.id,
+      }),
+    });
+    alert("Saved to your library!");
+  }
+
+  return (
+    <div className="flex gap-2 mt-2">
+      <Button variant="ghost" size="sm" onClick={handleRemix} className="flex-1 text-xs h-7">
+        <GitFork className="h-3 w-3" />
+        Remix
+      </Button>
+      <Button variant="ghost" size="sm" onClick={handleSaveToLibrary} className="flex-1 text-xs h-7">
+        <BookmarkPlus className="h-3 w-3" />
+        Save
+      </Button>
+    </div>
+  );
+}
