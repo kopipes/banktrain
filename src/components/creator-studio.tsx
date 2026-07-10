@@ -49,6 +49,105 @@ const LIGHTING_PRESETS = [
   "soft diffused light", "neon light", "backlight", "low key", "high key",
 ];
 
+// Lightweight markdown renderer for chat messages
+// Handles: headings, bold, italic, inline code, code blocks, bullet lists, numbered lists, hr
+function MarkdownMessage({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Fenced code block
+    if (line.startsWith("```")) {
+      const lang = line.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      elements.push(
+        <pre key={i} className="bg-gray-900 text-green-300 rounded p-2 my-1.5 overflow-x-auto text-[10px] leading-relaxed">
+          {lang && <span className="text-gray-500 text-[9px] block mb-1">{lang}</span>}
+          <code>{codeLines.join("\n")}</code>
+        </pre>
+      );
+      i++;
+      continue;
+    }
+
+    // Heading h1/h2/h3
+    if (line.startsWith("### ")) {
+      elements.push(<p key={i} className="font-semibold text-gray-800 mt-2 mb-0.5">{inlineFormat(line.slice(4))}</p>);
+    } else if (line.startsWith("## ")) {
+      elements.push(<p key={i} className="font-bold text-gray-900 mt-2 mb-0.5">{inlineFormat(line.slice(3))}</p>);
+    } else if (line.startsWith("# ")) {
+      elements.push(<p key={i} className="font-bold text-gray-900 mt-2 mb-1 text-sm">{inlineFormat(line.slice(2))}</p>);
+    }
+    // Horizontal rule
+    else if (/^---+$/.test(line.trim())) {
+      elements.push(<hr key={i} className="border-gray-200 my-2" />);
+    }
+    // Bullet list
+    else if (/^[-*+] /.test(line)) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && /^[-*+] /.test(lines[i])) {
+        items.push(<li key={i}>{inlineFormat(lines[i].replace(/^[-*+] /, ""))}</li>);
+        i++;
+      }
+      elements.push(<ul key={`ul-${i}`} className="list-disc list-inside space-y-0.5 my-1 pl-1">{items}</ul>);
+      continue;
+    }
+    // Numbered list
+    else if (/^\d+\. /.test(line)) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        items.push(<li key={i}>{inlineFormat(lines[i].replace(/^\d+\. /, ""))}</li>);
+        i++;
+      }
+      elements.push(<ol key={`ol-${i}`} className="list-decimal list-inside space-y-0.5 my-1 pl-1">{items}</ol>);
+      continue;
+    }
+    // Empty line — small gap
+    else if (line.trim() === "") {
+      elements.push(<div key={i} className="h-1" />);
+    }
+    // Normal paragraph
+    else {
+      elements.push(<p key={i} className="leading-relaxed">{inlineFormat(line)}</p>);
+    }
+
+    i++;
+  }
+
+  return <div className="space-y-0.5">{elements}</div>;
+}
+
+// Inline formatting: **bold**, *italic*, `code`
+function inlineFormat(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
+  let last = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    if (match[2] !== undefined) {
+      parts.push(<strong key={match.index}>{match[2]}</strong>);
+    } else if (match[3] !== undefined) {
+      parts.push(<em key={match.index}>{match[3]}</em>);
+    } else if (match[4] !== undefined) {
+      parts.push(<code key={match.index} className="bg-gray-200 text-gray-800 rounded px-1 font-mono text-[10px]">{match[4]}</code>);
+    }
+    last = match.index + match[0].length;
+  }
+
+  if (last < text.length) parts.push(text.slice(last));
+  return parts.length === 1 ? parts[0] : parts;
+}
+
 export function CreatorStudio({
   userId, userName, division, imageModels, llmModels,
 }: CreatorStudioProps) {
@@ -598,7 +697,9 @@ export function CreatorStudio({
                       msg.role === "user" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-800"
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === "assistant"
+                      ? <MarkdownMessage content={msg.content} />
+                      : msg.content}
                   </div>
                 </div>
               ))}
