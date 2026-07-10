@@ -66,6 +66,8 @@ export interface StudioUrlParams {
   steps?: string | number;
   aspectRatio?: string;
   challengeId?: string;
+  inputImageUrl?: string;
+  generationType?: "text-to-image" | "image-to-image";
 }
 
 /** Build a canonical /studio URL with pre-filled prompt params */
@@ -85,6 +87,8 @@ export function buildStudioUrl(params: StudioUrlParams): string {
     ["steps", params.steps],
     ["aspectRatio", params.aspectRatio],
     ["challenge", params.challengeId],
+    ["generationType", params.generationType],
+    ["inputImageUrl", params.inputImageUrl],
   ];
   for (const [key, val] of entries) {
     if (val !== undefined && val !== "") p.set(key, String(val));

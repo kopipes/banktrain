@@ -39,6 +39,9 @@ export function FeedActions({ generation }: { generation: Generation }) {
         cfgScale: generation.cfgScale ?? 7,
         steps: generation.steps ?? 30,
         aspectRatio: generation.aspectRatio ?? "1:1",
+        // Pass image URL and set generation type to image-to-image for remix
+        inputImageUrl: generation.imageUrl ?? undefined,
+        generationType: generation.imageUrl ? "image-to-image" : "text-to-image",
       })
     );
   }

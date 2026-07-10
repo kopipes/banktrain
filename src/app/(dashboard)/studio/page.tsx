@@ -4,9 +4,14 @@ import { aiModels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { CreatorStudio } from "@/components/creator-studio";
 
-export default async function StudioPage() {
+export default async function StudioPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
   const session = await auth();
   const user = session!.user as { id: string; name?: string; role?: string; division?: string };
+  const params = await searchParams;
 
   const models = await db
     .select()
@@ -23,6 +28,8 @@ export default async function StudioPage() {
       division={user.division ?? "general"}
       imageModels={imageModels}
       llmModels={llmModels}
+      initialInputImageUrl={params.inputImageUrl}
+      initialGenerationType={params.generationType as "text-to-image" | "image-to-image" | undefined}
     />
   );
 }

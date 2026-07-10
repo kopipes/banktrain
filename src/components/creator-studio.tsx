@@ -20,6 +20,8 @@ interface CreatorStudioProps {
   division: string;
   imageModels: AiModel[];
   llmModels: AiModel[];
+  initialInputImageUrl?: string;
+  initialGenerationType?: "text-to-image" | "image-to-image";
 }
 
 interface GenerationResult {
@@ -150,6 +152,7 @@ function inlineFormat(text: string): React.ReactNode {
 
 export function CreatorStudio({
   userId, userName, division, imageModels, llmModels,
+  initialInputImageUrl, initialGenerationType,
 }: CreatorStudioProps) {
   // Hybrid prompt fields
   const [subject, setSubject] = useState("");
@@ -167,17 +170,35 @@ export function CreatorStudio({
   const [cfgScale, setCfgScale] = useState(7);
   const [steps, setSteps] = useState(30);
   const [aspectRatio, setAspectRatio] = useState("1:1");
-  const [selectedImageModel, setSelectedImageModel] = useState(
-    imageModels.find((m) => m.isDefault)?.id ?? imageModels[0]?.id ?? ""
-  );
+
+  // Auto-select the best model for the initial generation type
+  // For image-to-image, prefer a model whose modelId contains image-to-image/edit/remix/kontext
+  const defaultImageModel = (() => {
+    if (initialGenerationType === "image-to-image") {
+      const img2imgModel = imageModels.find((m) =>
+        m.provider === "kie.ai" && (
+          m.modelId.includes("image-to-image") ||
+          m.modelId.includes("edit") ||
+          m.modelId.includes("remix") ||
+          m.modelId.includes("kontext")
+        )
+      );
+      if (img2imgModel) return img2imgModel.id;
+    }
+    return imageModels.find((m) => m.isDefault)?.id ?? imageModels[0]?.id ?? "";
+  })();
+
+  const [selectedImageModel, setSelectedImageModel] = useState(defaultImageModel);
   const [selectedLlmModel, setSelectedLlmModel] = useState(
     llmModels.find((m) => m.isDefault)?.id ?? llmModels[0]?.id ?? ""
   );
 
   // Generation type + image-to-image input
-  const [generationType, setGenerationType] = useState<"text-to-image" | "image-to-image">("text-to-image");
-  const [inputImageUrl, setInputImageUrl] = useState<string>("");
-  const [inputImagePreview, setInputImagePreview] = useState<string>("");
+  const [generationType, setGenerationType] = useState<"text-to-image" | "image-to-image">(
+    initialGenerationType ?? "text-to-image"
+  );
+  const [inputImageUrl, setInputImageUrl] = useState<string>(initialInputImageUrl ?? "");
+  const [inputImagePreview, setInputImagePreview] = useState<string>(initialInputImageUrl ?? "");
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
