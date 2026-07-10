@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { generations, aiModels } from "@/db/schema";
 import { eq } from "drizzle-orm";
+
+// Extend route timeout to 3 minutes to allow kie.ai async generation to complete
+export const maxDuration = 180;
 import { generateId } from "@/lib/utils";
 import { trackTokenUsage, checkQuota } from "@/lib/token-tracker";
 import { saveImage } from "@/lib/storage";
@@ -139,10 +142,10 @@ export async function POST(req: NextRequest) {
 
       const taskId = createData.data.taskId;
 
-      // Poll for result — max 120s, every 3s
+      // Poll for result — max 90s (under Cloudflare's 100s proxy timeout), every 2s
       const pollStart = Date.now();
-      const POLL_INTERVAL = 3000;
-      const POLL_TIMEOUT = 120_000;
+      const POLL_INTERVAL = 2000;
+      const POLL_TIMEOUT = 90_000;
       let resultUrl: string | null = null;
 
       while (Date.now() - pollStart < POLL_TIMEOUT) {
