@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { LoginForm } from "@/components/login-form";
 import { Sparkles, Wand2, Image, Zap } from "lucide-react";
 
@@ -97,7 +98,9 @@ export default function LoginPage() {
           {/* Card */}
           <div className="rounded-2xl border border-[var(--border)] p-7 shadow-[var(--shadow-lg)]"
             style={{ background: "var(--surface)" }}>
-            <LoginForm />
+            <Suspense fallback={<div className="h-40" />}>
+              <LoginForm />
+            </Suspense>
           </div>
         </div>
       </div>
