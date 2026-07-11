@@ -5,8 +5,13 @@ import { eq, desc } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
 import { LibraryActions } from "@/components/library-actions";
 import { BookOpen, Sparkles, GitFork } from "lucide-react";
+import { getFeatureFlags } from "@/lib/feature-flags";
+import { redirect } from "next/navigation";
 
 export default async function LibraryPage() {
+  const flags = await getFeatureFlags();
+  if (!flags.showLibrary) redirect("/dashboard");
+
   const session = await auth();
   const user = session!.user as { id: string };
 

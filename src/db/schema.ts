@@ -242,6 +242,17 @@ export const negativePromptProfiles = sqliteTable("negative_prompt_profiles", {
 });
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+// ── App Settings ─────────────────────────────────────────────────────────────
+// Key/value store for app-wide admin-controlled feature flags.
+// Each row is one setting: key (unique), value (JSON string), updatedAt.
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(), // JSON-encoded value
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type AiModel = typeof aiModels.$inferSelect;
@@ -253,3 +264,4 @@ export type Challenge = typeof challenges.$inferSelect;
 export type ChallengeSubmission = typeof challengeSubmissions.$inferSelect;
 export type PromptLibraryEntry = typeof promptLibrary.$inferSelect;
 export type DivisionQuota = typeof divisionQuotas.$inferSelect;
+export type AppSetting = typeof appSettings.$inferSelect;

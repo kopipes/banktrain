@@ -19,6 +19,7 @@ import {
   Sparkles,
   Sun,
   Moon,
+  Settings,
 } from "lucide-react";
 
 interface NavItem {
@@ -40,21 +41,30 @@ const adminNavItems: NavItem[] = [
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "AI Models", href: "/admin/models", icon: Cpu },
   { label: "Quotas & Budget", href: "/admin/quotas", icon: BarChart3 },
+  { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 interface SidebarProps {
   role?: string;
   userName?: string;
   userDivision?: string;
+  showLibrary?: boolean;
+  showChallenges?: boolean;
 }
 
-export function Sidebar({ role, userName, userDivision }: SidebarProps) {
+export function Sidebar({ role, userName, userDivision, showLibrary = true, showChallenges = true }: SidebarProps) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
 
   const initials = userName
     ? userName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "?";
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.href === "/library") return showLibrary;
+    if (item.href === "/challenges") return showChallenges;
+    return true;
+  });
 
   return (
     <aside
@@ -74,7 +84,7 @@ export function Sidebar({ role, userName, userDivision }: SidebarProps) {
 
       {/* Main nav */}
       <nav className="flex-1 space-y-0.5" aria-label="Main navigation">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link

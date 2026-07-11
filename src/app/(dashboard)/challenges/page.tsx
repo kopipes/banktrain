@@ -5,8 +5,13 @@ import { eq, desc } from "drizzle-orm";
 import { ChallengeCard } from "@/components/challenge-card";
 import { Trophy, Sparkles, Plus } from "lucide-react";
 import Link from "next/link";
+import { getFeatureFlags } from "@/lib/feature-flags";
+import { redirect } from "next/navigation";
 
 export default async function ChallengesPage() {
+  const flags = await getFeatureFlags();
+  if (!flags.showChallenges) redirect("/dashboard");
+
   const session = await auth();
   const user = session!.user as { id: string; role?: string };
 
