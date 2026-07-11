@@ -13,6 +13,7 @@ import { useUserDefaults } from "@/hooks/use-user-defaults";
 import {
   Wand2, RefreshCw, BookmarkPlus, Globe, Copy,
   MessageSquare, X, ChevronDown, ChevronUp, Info, Upload, ImageIcon,
+  Tag, Plus, Check,
 } from "lucide-react";
 
 interface CreatorStudioProps {
@@ -51,6 +52,34 @@ const LIGHTING_PRESETS = [
   "natural light", "golden hour", "studio lighting", "dramatic lighting",
   "soft diffused light", "neon light", "backlight", "low key", "high key",
 ];
+
+/** Derive tag suggestions from prompt fields. Returns unique, non-empty tags. */
+function buildTagSuggestions(parts: {
+  subject?: string; style?: string; environment?: string;
+  lighting?: string; action?: string; colorPalette?: string; aspectRatio?: string;
+}): string[] {
+  const raw: string[] = [];
+  if (parts.style) raw.push(parts.style);
+  if (parts.environment) raw.push(parts.environment);
+  if (parts.lighting) raw.push(parts.lighting);
+  if (parts.aspectRatio && parts.aspectRatio !== "1:1") raw.push(parts.aspectRatio);
+  if (parts.colorPalette) raw.push(parts.colorPalette);
+  // Extract first meaningful word from subject
+  if (parts.subject) {
+    const words = parts.subject.trim().split(/\s+/).slice(0, 2);
+    raw.push(...words);
+  }
+  if (parts.action) {
+    const words = parts.action.trim().split(/\s+/).slice(0, 1);
+    raw.push(...words);
+  }
+  // Deduplicate, lowercase, filter short
+  const seen = new Set<string>();
+  return raw
+    .map((t) => t.toLowerCase().trim())
+    .filter((t) => t.length > 2 && !seen.has(t) && seen.add(t) !== undefined)
+    .slice(0, 10);
+}
 
 // Lightweight markdown renderer for chat messages
 // Handles: headings, bold, italic, inline code, code blocks, bullet lists, numbered lists, hr
@@ -235,6 +264,13 @@ export function CreatorStudio({
   const [showXray, setShowXray] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
 
+  // Tags
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [customTagInput, setCustomTagInput] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
   // AI Mentor chat
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -312,6 +348,12 @@ export function CreatorStudio({
       if (!res.ok) { setError(data.error ?? "Generation failed."); return; }
       setResult(data);
       setSeed(data.seed);
+      // Auto-generate tag suggestions from current prompt fields
+      const tags = buildTagSuggestions({ subject, style, environment, lighting, action, colorPalette, aspectRatio });
+      setSuggestedTags(tags);
+      setSelectedTags(tags.slice(0, 3)); // pre-select top 3
+      setCustomTagInput("");
+      setSaveSuccess(false);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -323,6 +365,7 @@ export function CreatorStudio({
     if (!result) return;
     const title = prompt("Enter a title for this prompt:");
     if (!title) return;
+    setSaveLoading(true);
     await fetch("/api/library", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -331,9 +374,11 @@ export function CreatorStudio({
         fullPrompt: result.fullPrompt, negativePrompt, style,
         cfgScale: result.cfgScale, steps: result.steps,
         aspectRatio: result.aspectRatio, imageUrl: result.imageUrl,
+        tags: selectedTags,
       }),
     });
-    alert("Saved to library!");
+    setSaveLoading(false);
+    setSaveSuccess(true);
   }
 
   async function handleSendChat() {
@@ -688,14 +733,123 @@ export function CreatorStudio({
               </CardContent>
             </Card>
 
+            {/* Tags */}
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-indigo-500" />
+                  Tags
+                  <span className="text-xs font-normal text-gray-400">— will be saved with prompt to Library</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Suggested tags */}
+                {suggestedTags.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-500 mb-2">Suggested — click to toggle:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {suggestedTags.map((tag) => {
+                        const active = selectedTags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() =>
+                              setSelectedTags((prev) =>
+                                active ? prev.filter((t) => t !== tag) : [...prev, tag]
+                              )
+                            }
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150"
+                            style={{
+                              background: active ? "rgba(108,99,255,0.12)" : "var(--surface-2, #f3f4f6)",
+                              color: active ? "var(--accent, #6c63ff)" : "#6b7280",
+                              border: active ? "1px solid rgba(108,99,255,0.3)" : "1px solid #e5e7eb",
+                            }}
+                          >
+                            {active && <Check className="h-2.5 w-2.5" />}
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Selected tags */}
+                {selectedTags.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-500 mb-1.5">Selected ({selectedTags.length}):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+                          style={{ background: "rgba(108,99,255,0.12)", color: "var(--accent, #6c63ff)", border: "1px solid rgba(108,99,255,0.3)" }}
+                        >
+                          {tag}
+                          <button
+                            onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
+                            className="ml-0.5 hover:text-red-500 transition-colors"
+                            aria-label={`Remove tag ${tag}`}
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom tag input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    placeholder="Add custom tag..."
+                    value={customTagInput}
+                    onChange={(e) => setCustomTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && customTagInput.trim()) {
+                        const t = customTagInput.trim().toLowerCase();
+                        if (!selectedTags.includes(t)) setSelectedTags((prev) => [...prev, t]);
+                        if (!suggestedTags.includes(t)) setSuggestedTags((prev) => [...prev, t]);
+                        setCustomTagInput("");
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      const t = customTagInput.trim().toLowerCase();
+                      if (!t) return;
+                      if (!selectedTags.includes(t)) setSelectedTags((prev) => [...prev, t]);
+                      if (!suggestedTags.includes(t)) setSuggestedTags((prev) => [...prev, t]);
+                      setCustomTagInput("");
+                    }}
+                    disabled={!customTagInput.trim()}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Actions */}
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleGenerate}>
                 <RefreshCw className="h-3 w-3" /> Regenerate
               </Button>
-              <Button variant="outline" size="sm" onClick={handleSaveToLibrary}>
-                <BookmarkPlus className="h-3 w-3" /> Save to Library
-              </Button>
+              {saveSuccess ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
+                  style={{ background: "rgba(67,233,123,0.1)", color: "#16a34a", border: "1px solid rgba(67,233,123,0.3)" }}>
+                  <Check className="h-3.5 w-3.5" /> Saved to Library
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={handleSaveToLibrary} disabled={saveLoading}>
+                  <BookmarkPlus className="h-3 w-3" /> {saveLoading ? "Saving..." : "Save to Library"}
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handleCopyPrompt}>
                 <Copy className="h-3 w-3" /> Copy Prompt
               </Button>
