@@ -67,7 +67,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 export function GenerationDetailModal({ generation, onClose }: Props) {
   const router = useRouter();
   const [saveLoading, setSaveLoading] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") onClose();
@@ -83,6 +83,8 @@ export function GenerationDetailModal({ generation, onClose }: Props) {
   }, [handleKeyDown]);
 
   if (!generation) return null;
+
+  const isSaved = savedIds.has(generation.id);
 
   function handleRemix() {
     if (!generation) return;
@@ -127,8 +129,7 @@ export function GenerationDetailModal({ generation, onClose }: Props) {
       }),
     });
     setSaveLoading(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
+    setSavedIds((prev) => new Set(prev).add(generation.id));
   }
 
   const date = generation.createdAt
@@ -270,22 +271,34 @@ export function GenerationDetailModal({ generation, onClose }: Props) {
 
           {/* Actions */}
           <div className="p-5 flex gap-2 mt-auto">
-            <Button variant="outline" className="flex-1 h-9 text-sm" onClick={handleRemix}>
+            <Button
+              variant="outline"
+              className={`h-9 text-sm ${isSaved ? "flex-1" : "flex-1"}`}
+              onClick={handleRemix}
+            >
               <GitFork className="h-4 w-4" />
               Remix
             </Button>
-            <Button
-              variant="gradient"
-              className="flex-1 h-9 text-sm"
-              onClick={handleSaveToLibrary}
-              isLoading={saveLoading}
-            >
-              {saveSuccess ? (
-                <><Check className="h-4 w-4" /> Saved!</>
-              ) : (
-                <><BookmarkPlus className="h-4 w-4" /> Save to Library</>
-              )}
-            </Button>
+            {!isSaved && (
+              <Button
+                variant="gradient"
+                className="flex-1 h-9 text-sm"
+                onClick={handleSaveToLibrary}
+                isLoading={saveLoading}
+              >
+                <BookmarkPlus className="h-4 w-4" />
+                Save to Library
+              </Button>
+            )}
+            {isSaved && (
+              <div
+                className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl text-sm font-medium"
+                style={{ background: "rgba(67,233,123,0.1)", color: "var(--success)", border: "1px solid rgba(67,233,123,0.2)" }}
+              >
+                <Check className="h-4 w-4" />
+                Saved to Library
+              </div>
+            )}
           </div>
         </div>
       </div>
