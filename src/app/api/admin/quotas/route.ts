@@ -2,10 +2,9 @@ import { requireAdmin } from "@/lib/auth-utils";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { divisionQuotas, tokenLogs, users } from "@/db/schema";
-import { eq, sum, count } from "drizzle-orm";
+import { eq, sum, count, sql } from "drizzle-orm";
 import { generateId, currentMonthYear } from "@/lib/utils";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
 
 const quotaSchema = z.object({
   division: z.string().min(1),

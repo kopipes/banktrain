@@ -27,12 +27,11 @@ const roleVariant = (role: string): "destructive" | "warning" | "secondary" => {
 
 export function AdminUsersClient({ initialUsers }: { initialUsers: User[] }) {
   const router = useRouter();
-  const [users, setUsers] = useState(initialUsers);
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "trainee", division: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -53,17 +52,13 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: User[] }) {
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this user?")) return;
-    await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
-    router.refresh();
-  }
-
-  async function handleUpdate(id: string, updates: Partial<User>) {
-    await fetch("/api/admin/users", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...updates }),
-    });
-    setEditId(null);
+    setActionError("");
+    const res = await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Failed to delete user.");
+      return;
+    }
     router.refresh();
   }
 
@@ -72,13 +67,19 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: User[] }) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-500 mt-1">{users.length} users across all divisions</p>
+          <p className="text-gray-500 mt-1">{initialUsers.length} users across all divisions</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
           <UserPlus className="h-4 w-4" />
           Add User
         </Button>
       </div>
+
+      {actionError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700" role="alert">
+          {actionError}
+        </div>
+      )}
 
       {/* Create form */}
       {showForm && (

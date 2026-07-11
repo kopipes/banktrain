@@ -10,16 +10,17 @@ export default async function ChallengesPage() {
   const session = await auth();
   const user = session!.user as { id: string; role?: string };
 
-  const allChallenges = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.isActive, true))
-    .orderBy(desc(challenges.createdAt));
-
-  const mySubmissions = await db
-    .select()
-    .from(challengeSubmissions)
-    .where(eq(challengeSubmissions.userId, user.id));
+  const [allChallenges, mySubmissions] = await Promise.all([
+    db
+      .select()
+      .from(challenges)
+      .where(eq(challenges.isActive, true))
+      .orderBy(desc(challenges.createdAt)),
+    db
+      .select()
+      .from(challengeSubmissions)
+      .where(eq(challengeSubmissions.userId, user.id)),
+  ]);
 
   const submittedIds = new Set(mySubmissions.map((s) => s.challengeId));
 

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buildFullPrompt, formatIdr } from "@/lib/utils";
 import type { AiModel } from "@/db/schema";
+import { useUserDefaults } from "@/hooks/use-user-defaults";
 import {
   Wand2, RefreshCw, BookmarkPlus, Globe, Copy,
   MessageSquare, X, ChevronDown, ChevronUp, Info, Upload, ImageIcon,
@@ -154,6 +155,8 @@ export function CreatorStudio({
   userId, userName, division, imageModels, llmModels,
   initialInputImageUrl, initialGenerationType,
 }: CreatorStudioProps) {
+  const userDefaults = useUserDefaults();
+
   // Hybrid prompt fields
   const [subject, setSubject] = useState("");
   const [action, setAction] = useState("");
@@ -165,11 +168,23 @@ export function CreatorStudio({
   const [fullPromptOverride, setFullPromptOverride] = useState("");
   const [useFullPrompt, setUseFullPrompt] = useState(false);
 
-  // Parameters
+  // Parameters — initialised from static defaults; updated once user defaults load
   const [seed, setSeed] = useState<number>(-1);
   const [cfgScale, setCfgScale] = useState(7);
   const [steps, setSteps] = useState(30);
   const [aspectRatio, setAspectRatio] = useState("1:1");
+
+  // Apply personalised defaults once they arrive (only if user has prior history)
+  useEffect(() => {
+    if (!userDefaults.isLoaded || userDefaults.sampleCount === 0) return;
+    setCfgScale(userDefaults.defaultCfgScale);
+    setSteps(userDefaults.defaultSteps);
+    setAspectRatio(userDefaults.defaultAspectRatio);
+    if (userDefaults.defaultStyle) setStyle(userDefaults.defaultStyle);
+    if (userDefaults.negativeKeywords.length > 0) {
+      setNegativePrompt(userDefaults.negativeKeywords.join(", "));
+    }
+  }, [userDefaults.isLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-select the best model for the initial generation type
   // For image-to-image, prefer a model whose modelId contains image-to-image/edit/remix/kontext

@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { promptLibrary } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { z } from "zod";
 
@@ -66,4 +66,35 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ id }, { status: 201 });
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const user = session.user as { id: string; role?: string };
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+  // Allow owner or admin to delete
+  const entry = await db
+    .select({ userId: promptLibrary.userId })
+    .from(promptLibrary)
+    .where(eq(promptLibrary.id, id))
+    .get();
+
+  if (!entry) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const isOwner = entry.userId === user.id;
+  const isAdmin = user.role === "admin";
+  if (!isOwner && !isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await db
+    .delete(promptLibrary)
+    .where(and(eq(promptLibrary.id, id)));
+
+  return NextResponse.json({ success: true });
 }

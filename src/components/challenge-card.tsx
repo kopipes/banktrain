@@ -14,19 +14,19 @@ interface ChallengeCardProps {
 const difficultyConfig = {
   beginner: {
     label: "Beginner",
-    gradient: "from-[#43e97b] to-[#38f9d7]",
+    gradientCss: "linear-gradient(135deg, #43e97b, #38f9d7)",
     glow: "rgba(67,233,123,0.3)",
     badge: "success" as const,
   },
   intermediate: {
     label: "Intermediate",
-    gradient: "from-[#f7971e] to-[#ffd200]",
+    gradientCss: "linear-gradient(135deg, #f7971e, #ffd200)",
     glow: "rgba(247,151,30,0.3)",
     badge: "warning" as const,
   },
   advanced: {
     label: "Advanced",
-    gradient: "from-[#ff6584] to-[#ff8c69]",
+    gradientCss: "linear-gradient(135deg, #ff6584, #ff8c69)",
     glow: "rgba(255,101,132,0.3)",
     badge: "destructive" as const,
   },
@@ -59,7 +59,7 @@ export function ChallengeCard({ challenge, submitted, userId }: ChallengeCardPro
         />
       ) : (
         <div
-          className={`w-full aspect-video flex items-center justify-center bg-gradient-to-br ${config.gradient} opacity-10`}
+          className="w-full aspect-video flex items-center justify-center opacity-10"
           style={{ background: `linear-gradient(135deg, ${config.glow}, transparent)` }}
         >
           <Zap className="h-8 w-8 text-[var(--foreground-subtle)]" />
@@ -100,7 +100,7 @@ export function ChallengeCard({ challenge, submitted, userId }: ChallengeCardPro
             href={`/studio?challenge=${challenge.id}`}
             className={`flex items-center justify-center gap-2 h-9 px-4 text-sm rounded-xl font-medium text-white transition-all duration-200 hover:opacity-90 hover:scale-[0.98] active:scale-[0.97]`}
             style={{
-              background: `linear-gradient(135deg, ${config.gradient.replace("from-", "").replace(" to-", ", ").replace("[", "").replace("]", "")})`,
+              background: config.gradientCss,
               boxShadow: `0 4px 16px ${config.glow}`,
             }}
           >

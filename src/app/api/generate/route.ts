@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (!resultUrl) {
-        throw new Error("kie.ai generation timed out — no result after 120s");
+        throw new Error("kie.ai generation timed out — no result after 90s");
       }
 
       // Download image and convert to base64

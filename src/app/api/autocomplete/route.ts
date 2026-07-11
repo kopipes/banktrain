@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { userTelemetry, generations } from "@/db/schema";
+import { generations } from "@/db/schema";
 import { eq, desc, like } from "drizzle-orm";
 
 /**

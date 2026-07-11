@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { formatIdr } from "@/lib/utils";
 
 interface DivisionEntry {
@@ -62,16 +63,21 @@ export function TopUsersTable({ topUsers }: { topUsers: TopUser[] }) {
 export function AnalyticsCharts({ divisionData }: { divisionData: DivisionEntry[] }) {
   if (divisionData.length === 0) return null;
 
-  const maxSpend = Math.max(...divisionData.map((d) => d.used), 1);
+  const sortedData = useMemo(
+    () => [...divisionData].sort((a, b) => b.used - a.used),
+    [divisionData]
+  );
+  const maxSpend = useMemo(
+    () => Math.max(...divisionData.map((d) => d.used), 1),
+    [divisionData]
+  );
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Spend Comparison</h2>
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="space-y-4">
-          {[...divisionData]
-            .sort((a, b) => b.used - a.used)
-            .map((d) => (
+          {sortedData.map((d) => (
               <div key={d.division}>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="font-medium text-gray-700 capitalize w-32 truncate">
