@@ -41,7 +41,7 @@ export function LibraryActions({ entry, currentUserId }: LibraryActionsProps) {
 
   async function handleDelete() {
     if (!confirm("Delete this library entry?")) return;
-    await fetch(`/api/library/${entry.id}`, { method: "DELETE" });
+    await fetch(`/api/library?id=${entry.id}`, { method: "DELETE" });
     router.refresh();
   }
 
