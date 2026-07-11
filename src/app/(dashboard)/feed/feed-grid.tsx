@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { FeedActions } from "@/components/feed-actions";
 import { GenerationDetailModal, type FeedGeneration } from "@/components/generation-detail-modal";
@@ -13,6 +13,26 @@ interface Props {
 
 export function FeedGrid({ generations }: Props) {
   const [selected, setSelected] = useState<FeedGeneration | null>(null);
+  // Set of generation IDs already saved to library (matched via forkedFromId)
+  const [savedGenIds, setSavedGenIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch("/api/library")
+      .then((r) => r.json())
+      .then((entries: Array<{ forkedFromId?: string | null }>) => {
+        const ids = new Set(
+          entries
+            .map((e) => e.forkedFromId)
+            .filter((id): id is string => !!id)
+        );
+        setSavedGenIds(ids);
+      })
+      .catch(() => {/* silently fail */});
+  }, []);
+
+  function markSaved(genId: string) {
+    setSavedGenIds((prev) => new Set(prev).add(genId));
+  }
 
   if (generations.length === 0) {
     return (
@@ -78,7 +98,11 @@ export function FeedGrid({ generations }: Props) {
               </div>
               {/* Stop propagation on FeedActions so clicks don't open modal */}
               <div onClick={(e) => e.stopPropagation()}>
-                <FeedActions generation={gen} />
+                <FeedActions
+                  generation={gen}
+                  alreadySaved={savedGenIds.has(gen.id)}
+                  onSaved={() => markSaved(gen.id)}
+                />
               </div>
             </div>
           </div>
@@ -87,6 +111,8 @@ export function FeedGrid({ generations }: Props) {
 
       <GenerationDetailModal
         generation={selected}
+        savedGenIds={savedGenIds}
+        onSaved={markSaved}
         onClose={() => setSelected(null)}
       />
     </>

@@ -23,10 +23,17 @@ interface Generation {
   imageUrl?: string | null;
 }
 
-export function FeedActions({ generation }: { generation: Generation }) {
+interface FeedActionsProps {
+  generation: Generation;
+  alreadySaved?: boolean;
+  onSaved?: () => void;
+}
+
+export function FeedActions({ generation, alreadySaved = false, onSaved }: FeedActionsProps) {
   const router = useRouter();
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(alreadySaved);
   const [saving, setSaving] = useState(false);
+  const [alreadyExists, setAlreadyExists] = useState(false);
 
   function handleRemix() {
     router.push(
@@ -49,6 +56,7 @@ export function FeedActions({ generation }: { generation: Generation }) {
   }
 
   async function handleSaveToLibrary() {
+    if (saved || alreadyExists) return;
     const title = prompt("Enter a title for this prompt:");
     if (!title) return;
     setSaving(true);
@@ -69,7 +77,15 @@ export function FeedActions({ generation }: { generation: Generation }) {
     });
     setSaving(false);
     setSaved(true);
+    onSaved?.();
   }
+
+  // Sync alreadySaved prop when it changes (after library data loads)
+  if (alreadySaved && !saved && !alreadyExists) {
+    setAlreadyExists(true);
+  }
+
+  const isSaved = saved || alreadyExists;
 
   return (
     <div className="flex gap-2 mt-2">
@@ -77,13 +93,13 @@ export function FeedActions({ generation }: { generation: Generation }) {
         <GitFork className="h-3 w-3" />
         Remix
       </Button>
-      {saved ? (
+      {isSaved ? (
         <div
           className="flex-1 flex items-center justify-center gap-1 h-7 rounded-lg text-xs font-medium"
           style={{ background: "rgba(67,233,123,0.1)", color: "var(--success)", border: "1px solid rgba(67,233,123,0.2)" }}
         >
           <Check className="h-3 w-3" />
-          Saved
+          {alreadyExists && !saved ? "In Library" : "Saved"}
         </div>
       ) : (
         <Button

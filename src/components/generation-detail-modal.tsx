@@ -36,6 +36,8 @@ export interface FeedGeneration {
 interface Props {
   generation: FeedGeneration | null;
   onClose: () => void;
+  savedGenIds?: Set<string>;
+  onSaved?: (genId: string) => void;
 }
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -64,7 +66,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
   );
 }
 
-export function GenerationDetailModal({ generation, onClose }: Props) {
+export function GenerationDetailModal({ generation, onClose, savedGenIds, onSaved }: Props) {
   const router = useRouter();
   const [saveLoading, setSaveLoading] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -84,7 +86,7 @@ export function GenerationDetailModal({ generation, onClose }: Props) {
 
   if (!generation) return null;
 
-  const isSaved = savedIds.has(generation.id);
+  const isSaved = savedIds.has(generation.id) || (savedGenIds?.has(generation.id) ?? false);
 
   function handleRemix() {
     if (!generation) return;
@@ -130,6 +132,7 @@ export function GenerationDetailModal({ generation, onClose }: Props) {
     });
     setSaveLoading(false);
     setSavedIds((prev) => new Set(prev).add(generation.id));
+    onSaved?.(generation.id);
   }
 
   const date = generation.createdAt
