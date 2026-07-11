@@ -7,7 +7,7 @@ import { buildStudioUrl } from "@/lib/utils";
 
 interface Generation {
   id: string;
-  fullPrompt: string;
+  fullPrompt?: string | null;
   style?: string | null;
   cfgScale?: number | null;
   seed?: number | null;
@@ -54,7 +54,7 @@ export function FeedActions({ generation }: { generation: Generation }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        fullPrompt: generation.fullPrompt,
+        fullPrompt: generation.fullPrompt ?? "",
         negativePrompt: generation.negativePrompt,
         style: generation.style,
         cfgScale: generation.cfgScale,

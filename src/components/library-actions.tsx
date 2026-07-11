@@ -8,14 +8,14 @@ import { buildStudioUrl } from "@/lib/utils";
 interface LibraryEntry {
   id: string;
   title: string;
-  fullPrompt: string;
+  fullPrompt?: string | null;
   negativePrompt?: string | null;
   style?: string | null;
   cfgScale?: number | null;
   steps?: number | null;
   aspectRatio?: string | null;
   imageUrl?: string | null;
-  userId: string;
+  userId?: string | null;
 }
 
 interface LibraryActionsProps {
@@ -29,7 +29,7 @@ export function LibraryActions({ entry, currentUserId }: LibraryActionsProps) {
   function handleFork() {
     router.push(
       buildStudioUrl({
-        fullPrompt: entry.fullPrompt,
+        fullPrompt: entry.fullPrompt ?? undefined,
         negativePrompt: entry.negativePrompt ?? "",
         style: entry.style ?? "",
         cfgScale: entry.cfgScale ?? 7,
