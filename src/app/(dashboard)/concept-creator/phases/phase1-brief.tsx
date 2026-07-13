@@ -50,7 +50,7 @@ export function Phase1Brief({ data, llmModelId, onChange, onNext }: Props) {
 
   const briefMode = data.briefMode ?? "structured";
   const canGenerateThemes = briefMode === "freetext"
-    ? data.rawBrief.trim().length > 20
+    ? (data.rawBrief ?? "").trim().length > 20
     : !!(data.brief.eventName && data.brief.objective && data.brief.targetAudience && data.brief.brandName);
   const canProceed = canGenerateThemes && data.paradigm && data.selectedTheme;
 
@@ -68,7 +68,7 @@ export function Phase1Brief({ data, llmModelId, onChange, onNext }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brief: data.brief,
-          rawBrief: briefMode === "freetext" ? data.rawBrief : undefined,
+          rawBrief: briefMode === "freetext" ? (data.rawBrief ?? "") : undefined,
           briefMode,
           modelId: llmModelId,
         }),
@@ -96,7 +96,7 @@ export function Phase1Brief({ data, llmModelId, onChange, onNext }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...chatMessages, userMsg],
-          currentPrompt: briefMode === "freetext" ? data.rawBrief : `Event: ${data.brief.eventName}\nObjective: ${data.brief.objective}\nAudience: ${data.brief.targetAudience}\nBrand: ${data.brief.brandName}`,
+          currentPrompt: briefMode === "freetext" ? (data.rawBrief ?? "") : `Event: ${data.brief.eventName}\nObjective: ${data.brief.objective}\nAudience: ${data.brief.targetAudience}\nBrand: ${data.brief.brandName}`,
           modelId: llmModelId,
           systemOverride: "You are an expert event concept strategist. Help the user refine their event brief — clarify objectives, sharpen the target audience, strengthen the brand narrative, and identify the right conceptual direction. Ask one clarifying question at a time. Be concise and practical.",
         }),
@@ -167,7 +167,7 @@ export function Phase1Brief({ data, llmModelId, onChange, onNext }: Props) {
                 id="raw-brief"
                 rows={8}
                 placeholder="e.g. We need a grand annual gala for PT Maju Bersama, about 300 guests from the banking sector. The theme should feel prestigious and forward-looking. The venue is at Ritz-Carlton Jakarta, 20x30m ballroom. Client wants to showcase their new digital banking platform and reward top partners..."
-                value={data.rawBrief}
+                value={data.rawBrief ?? ""}
                 onChange={(e) => onChange({ rawBrief: e.target.value })}
               />
               <p className="text-xs text-[var(--foreground-subtle)] mt-2">{data.rawBrief.length} characters</p>

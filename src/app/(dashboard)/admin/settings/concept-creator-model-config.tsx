@@ -1,14 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import type { AiModel } from "@/db/schema";
 import type { ConceptCreatorModelSettings } from "@/lib/concept-creator-settings";
-import {
-  Lightbulb, Wand2, Map, Box, Upload, X, Check, RefreshCw, Info,
-} from "lucide-react";
+import { Lightbulb, Wand2, Map, Box, Check, RefreshCw, Info } from "lucide-react";
 
 interface TaskConfig {
   key: keyof Pick<ConceptCreatorModelSettings, "concepting" | "prompting" | "blueprint" | "render3d">;
@@ -16,8 +13,6 @@ interface TaskConfig {
   description: string;
   modelType: "llm" | "image";
   icon: React.ComponentType<{ className?: string }>;
-  hasEnvImage?: boolean;
-  envKey?: "blueprint" | "render3d";
 }
 
 const TASK_CONFIGS: TaskConfig[] = [
@@ -41,8 +36,6 @@ const TASK_CONFIGS: TaskConfig[] = [
     description: "Overall venue floor plan, zoning blueprint, storyboard panels (Phase 3 overall visual).",
     modelType: "image",
     icon: Map,
-    hasEnvImage: true,
-    envKey: "blueprint",
   },
   {
     key: "render3d",
@@ -50,8 +43,6 @@ const TASK_CONFIGS: TaskConfig[] = [
     description: "Photorealistic 3D renders of stages and exhibition booths (Phase 3 booth & stage visuals).",
     modelType: "image",
     icon: Box,
-    hasEnvImage: true,
-    envKey: "render3d",
   },
 ];
 
@@ -66,11 +57,11 @@ export function ConceptCreatorModelConfig({ initialSettings, imageModels, llmMod
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [uploading, setUploading] = useState<string | null>(null);
-  const blueprintInputRef = useRef<HTMLInputElement>(null);
-  const render3dInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleSaveModel(key: keyof Pick<ConceptCreatorModelSettings, "concepting" | "prompting" | "blueprint" | "render3d">, value: string) {
+  async function handleSaveModel(
+    key: keyof Pick<ConceptCreatorModelSettings, "concepting" | "prompting" | "blueprint" | "render3d">,
+    value: string
+  ) {
     setSaving(key);
     setError("");
     const res = await fetch("/api/admin/concept-settings", {
@@ -89,39 +80,6 @@ export function ConceptCreatorModelConfig({ initialSettings, imageModels, llmMod
     setTimeout(() => setSaved(null), 2000);
   }
 
-  async function handleEnvImageUpload(envKey: "blueprint" | "render3d", file: File) {
-    setUploading(envKey);
-    setError("");
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const dataUrl = e.target?.result as string;
-      try {
-        const res = await fetch("/api/admin/concept-env-image", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: envKey, imageData: dataUrl }),
-        });
-        const data = await res.json();
-        if (!res.ok) { setError(data.error ?? "Upload failed."); return; }
-        const urlKey = envKey === "blueprint" ? "envBlueprintUrl" : "envRender3dUrl";
-        setSettings((prev) => ({ ...prev, [urlKey]: data.url }));
-      } catch {
-        setError("Upload failed. Please try again.");
-      } finally {
-        setUploading(null);
-      }
-    };
-    reader.readAsDataURL(file);
-  }
-
-  async function handleRemoveEnvImage(envKey: "blueprint" | "render3d") {
-    setUploading(envKey);
-    await fetch(`/api/admin/concept-env-image?type=${envKey}`, { method: "DELETE" });
-    const urlKey = envKey === "blueprint" ? "envBlueprintUrl" : "envRender3dUrl";
-    setSettings((prev) => ({ ...prev, [urlKey]: "" }));
-    setUploading(null);
-  }
-
   return (
     <div className="mt-8">
       <p className="text-xs font-bold text-[var(--foreground-subtle)] uppercase tracking-widest mb-1">
@@ -129,6 +87,7 @@ export function ConceptCreatorModelConfig({ initialSettings, imageModels, llmMod
       </p>
       <p className="text-xs text-[var(--foreground-muted)] mb-4">
         Assign specific AI models to each task in the Concept Creator workflow.
+        Reference environment images are uploaded per-session in Phase 3.
       </p>
 
       {error && (
@@ -138,14 +97,11 @@ export function ConceptCreatorModelConfig({ initialSettings, imageModels, llmMod
       )}
 
       <div className="space-y-3">
-        {TASK_CONFIGS.map(({ key, label, description, modelType, icon: Icon, hasEnvImage, envKey }) => {
+        {TASK_CONFIGS.map(({ key, label, description, modelType, icon: Icon }) => {
           const models = modelType === "llm" ? llmModels : imageModels;
           const currentValue = settings[key];
           const isSaving = saving === key;
           const isSaved = saved === key;
-          const envUrl = envKey === "blueprint" ? settings.envBlueprintUrl : settings.envRender3dUrl;
-          const isUploading = uploading === envKey;
-          const inputRef = envKey === "blueprint" ? blueprintInputRef : render3dInputRef;
 
           return (
             <div
@@ -157,7 +113,6 @@ export function ConceptCreatorModelConfig({ initialSettings, imageModels, llmMod
               }}
             >
               <div className="flex items-start gap-4">
-                {/* Icon */}
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                   style={{
@@ -171,13 +126,18 @@ export function ConceptCreatorModelConfig({ initialSettings, imageModels, llmMod
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase" style={{ background: modelType === "llm" ? "rgba(108,99,255,0.1)" : "rgba(247,151,30,0.1)", color: modelType === "llm" ? "var(--accent)" : "var(--warning)" }}>
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase"
+                      style={{
+                        background: modelType === "llm" ? "rgba(108,99,255,0.1)" : "rgba(247,151,30,0.1)",
+                        color: modelType === "llm" ? "var(--accent)" : "var(--warning)",
+                      }}
+                    >
                       {modelType === "llm" ? "LLM" : "Image"}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--foreground-muted)] mb-3">{description}</p>
 
-                  {/* Model selector */}
                   <div className="flex items-center gap-2">
                     <Select
                       className="flex-1"
@@ -203,62 +163,6 @@ export function ConceptCreatorModelConfig({ initialSettings, imageModels, llmMod
                       <Info className="h-3 w-3" />
                       No active {modelType === "llm" ? "LLM" : "image"} models. Add one in Admin → AI Models.
                     </p>
-                  )}
-
-                  {/* Environment image upload (for image tasks) */}
-                  {hasEnvImage && envKey && (
-                    <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
-                      <p className="text-xs font-semibold text-[var(--foreground-muted)] mb-1">
-                        Reference Environment Image
-                        <span className="ml-1 font-normal text-[var(--foreground-subtle)]">(optional — used for image-to-image)</span>
-                      </p>
-                      <p className="text-xs text-[var(--foreground-subtle)] mb-2">
-                        Upload a base image (venue photo, mood board, floor plan scan) to guide the AI.
-                      </p>
-
-                      {envUrl ? (
-                        <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={envUrl} alt="Environment" className="w-20 h-14 object-cover rounded-lg border" style={{ borderColor: "var(--border)" }} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-[var(--foreground-muted)] truncate">{envUrl}</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-[var(--danger)] h-7 px-2"
-                            onClick={() => handleRemoveEnvImage(envKey)}
-                            disabled={isUploading}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div>
-                          <input
-                            ref={inputRef}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleEnvImageUpload(envKey, file);
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => inputRef.current?.click()}
-                            disabled={isUploading}
-                            isLoading={isUploading}
-                          >
-                            <Upload className="h-3 w-3" />
-                            {isUploading ? "Uploading..." : "Upload reference image"}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
                   )}
                 </div>
               </div>
