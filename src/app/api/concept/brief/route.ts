@@ -18,6 +18,8 @@ const briefSchema = z.object({
     eventDuration: z.string(),
     additionalNotes: z.string(),
   }),
+  rawBrief: z.string().optional(),
+  briefMode: z.enum(["structured", "freetext"]).optional(),
   modelId: z.string().min(1),
 });
 
@@ -29,14 +31,23 @@ export async function POST(req: NextRequest) {
   const parsed = briefSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
-  const { brief, modelId } = parsed.data;
+  const { brief, rawBrief, briefMode, modelId } = parsed.data;
 
   const model = await db.select().from(aiModels).where(eq(aiModels.id, modelId)).get();
   if (!model || !model.isActive || model.type !== "llm") {
     return NextResponse.json({ error: "LLM model not found or inactive." }, { status: 404 });
   }
 
-  const prompt = `You are a senior event design consultant. Based on this event brief, suggest 5 compelling narrative themes for the event concept. Return ONLY a JSON array of 5 short theme names (2-5 words each), nothing else.
+  const isFreetext = briefMode === "freetext" && rawBrief && rawBrief.trim().length > 0;
+
+  const prompt = isFreetext
+    ? `You are a senior event design consultant. Based on this raw event brief, suggest 5 compelling narrative themes for the event concept. Return ONLY a JSON array of 5 short theme names (2-5 words each), nothing else.
+
+Raw Brief:
+${rawBrief}
+
+Return format: ["Theme 1", "Theme 2", "Theme 3", "Theme 4", "Theme 5"]`
+    : `You are a senior event design consultant. Based on this event brief, suggest 5 compelling narrative themes for the event concept. Return ONLY a JSON array of 5 short theme names (2-5 words each), nothing else.
 
 Brief:
 - Event Name: ${brief.eventName}

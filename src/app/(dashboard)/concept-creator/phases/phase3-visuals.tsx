@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { Phase1Data, Phase2Data, Phase3Data, GeneratedVisual } from "../types";
-import { Wand2, RefreshCw, CheckCircle, Images, AlertCircle } from "lucide-react";
+import { Wand2, RefreshCw, CheckCircle, Images, AlertCircle, Upload, X } from "lucide-react";
 
 interface Props {
   phase1: Phase1Data;
@@ -11,8 +11,6 @@ interface Props {
   data: Phase3Data;
   blueprintModelId: string;
   render3dModelId: string;
-  envBlueprintUrl: string;
-  envRender3dUrl: string;
   onChange: (data: Partial<Phase3Data>) => void;
   onNext: () => void;
   onBack: () => void;
@@ -25,25 +23,29 @@ const VISUAL_TYPES: Array<{
   modelKey: "blueprint" | "render3d";
 }> = [
   { type: "overall", label: "Overall Blueprint", desc: "Aerial zoning floor plan with traffic flow", modelKey: "blueprint" },
-  { type: "booth", label: "Booth Layout", desc: "4×4m modular booth 3D render", modelKey: "render3d" },
+  { type: "booth", label: "Booth Layout", desc: "4x4m modular booth 3D render", modelKey: "render3d" },
   { type: "stage", label: "Stage Render", desc: "Technical 3D main stage visualization", modelKey: "render3d" },
 ];
 
 export function Phase3Visuals({
   phase1, phase2, data,
   blueprintModelId, render3dModelId,
-  envBlueprintUrl, envRender3dUrl,
   onChange, onNext, onBack,
 }: Props) {
   const [generating, setGenerating] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [approved, setApproved] = useState(data.approved);
+  const blueprintInputRef = useRef<HTMLInputElement>(null);
+  const render3dInputRef = useRef<HTMLInputElement>(null);
 
   const enabledComponents = phase2.components
     .filter((c) => c.enabled)
     .map((c) => ({ name: c.name, enabled: c.enabled, area: c.area }));
 
   const canProceed = approved && data.visuals.length > 0;
+
+  const envBlueprintUrl = data.envBlueprintUrl ?? "";
+  const envRender3dUrl = data.envRender3dUrl ?? "";
 
   function getModelId(modelKey: "blueprint" | "render3d") {
     return modelKey === "blueprint" ? blueprintModelId : render3dModelId;
@@ -53,17 +55,30 @@ export function Phase3Visuals({
     return modelKey === "blueprint" ? envBlueprintUrl : envRender3dUrl;
   }
 
+  function handleEnvImageUpload(modelKey: "blueprint" | "render3d", file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (modelKey === "blueprint") onChange({ envBlueprintUrl: dataUrl });
+      else onChange({ envRender3dUrl: dataUrl });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeEnvImage(modelKey: "blueprint" | "render3d") {
+    if (modelKey === "blueprint") onChange({ envBlueprintUrl: "" });
+    else onChange({ envRender3dUrl: "" });
+  }
+
   async function generateVisual(type: GeneratedVisual["type"], modelKey: "blueprint" | "render3d") {
     const modelId = getModelId(modelKey);
     if (!modelId) {
-      setErrors((e) => ({ ...e, [type]: `No ${modelKey === "blueprint" ? "blueprint" : "3D render"} model configured. Set it in Admin → Settings.` }));
+      setErrors((e) => ({ ...e, [type]: `No ${modelKey === "blueprint" ? "blueprint" : "3D render"} model configured in Admin Settings.` }));
       return;
     }
     setGenerating((g) => ({ ...g, [type]: true }));
     setErrors((e) => ({ ...e, [type]: "" }));
-
     const envUrl = getEnvUrl(modelKey);
-
     try {
       const res = await fetch("/api/concept/generate", {
         method: "POST",
@@ -89,18 +104,13 @@ export function Phase3Visuals({
           envImageUrl: envUrl || undefined,
         }),
       });
-
       const json = await res.json();
       if (!res.ok) { setErrors((e) => ({ ...e, [type]: json.error ?? "Generation failed." })); return; }
-
       const newVisual: GeneratedVisual = {
-        type,
-        imageUrl: json.imageUrl,
+        type, imageUrl: json.imageUrl,
         label: VISUAL_TYPES.find((v) => v.type === type)?.label ?? type,
-        prompt: json.prompt,
-        generationId: json.generationId,
+        prompt: json.prompt, generationId: json.generationId,
       };
-
       const updated = [...data.visuals.filter((v) => v.type !== type), newVisual];
       onChange({ visuals: updated });
       setApproved(false);
@@ -117,12 +127,45 @@ export function Phase3Visuals({
     onChange({ approved: true });
   }
 
+  function EnvImageUpload({ modelKey }: { modelKey: "blueprint" | "render3d" }) {
+    const envUrl = getEnvUrl(modelKey);
+    const inputRef = modelKey === "blueprint" ? blueprintInputRef : render3dInputRef;
+    return (
+      <div className="mt-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+        <p className="text-[10px] font-semibold text-[var(--foreground-subtle)] mb-1.5 uppercase tracking-wide">
+          Env Image <span className="font-normal normal-case">(optional, image-to-image)</span>
+        </p>
+        {envUrl ? (
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={envUrl} alt="env" className="w-14 h-10 object-cover rounded-lg border" style={{ borderColor: "var(--border)" }} />
+            <button onClick={() => removeEnvImage(modelKey)}
+              className="text-xs flex items-center gap-1 px-2 py-1 rounded-lg"
+              style={{ color: "var(--danger)", background: "rgba(255,101,132,0.08)", border: "1px solid rgba(255,101,132,0.2)" }}>
+              <X className="h-3 w-3" /> Remove
+            </button>
+          </div>
+        ) : (
+          <>
+            <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEnvImageUpload(modelKey, f); }} />
+            <button onClick={() => inputRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg"
+              style={{ color: "var(--foreground-muted)", background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              <Upload className="h-3 w-3" /> Upload reference
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
         <h2 className="text-xl font-bold text-[var(--foreground)] mb-1">Phase 3 — Visual Generation</h2>
         <p className="text-sm text-[var(--foreground-muted)]">
-          Generate visuals for your concept. Review and approve before proceeding.
+          Generate visuals for your concept. Upload a reference environment image per task to guide the AI.
         </p>
       </div>
 
@@ -130,16 +173,10 @@ export function Phase3Visuals({
       <div className="rounded-2xl border border-[var(--border)] p-4 mb-6 flex flex-wrap gap-4" style={{ background: "var(--surface)" }}>
         <div><p className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wider">Theme</p><p className="text-sm font-semibold text-[var(--foreground)]">{phase1.selectedTheme}</p></div>
         <div><p className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wider">Paradigm</p><p className="text-sm font-semibold text-[var(--foreground)] capitalize">{phase1.paradigm?.replace("_", " ")}</p></div>
-        <div><p className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wider">Venue</p><p className="text-sm font-semibold text-[var(--foreground)]">{phase2.venue.venueName} ({phase2.venue.venueWidth}×{phase2.venue.venueLength}m)</p></div>
-        {(envBlueprintUrl || envRender3dUrl) && (
-          <div><p className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wider">Env Images</p>
-          <p className="text-sm font-semibold text-[var(--accent)]">
-            {[envBlueprintUrl && "Blueprint", envRender3dUrl && "3D Render"].filter(Boolean).join(", ")}
-          </p></div>
-        )}
+        <div><p className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wider">Venue</p><p className="text-sm font-semibold text-[var(--foreground)]">{phase2.venue.venueName} ({phase2.venue.venueWidth}x{phase2.venue.venueLength}m)</p></div>
       </div>
 
-      {/* Visual generation cards */}
+      {/* Visual cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {VISUAL_TYPES.map(({ type, label, desc, modelKey }) => {
           const visual = data.visuals.find((v) => v.type === type);
@@ -147,6 +184,7 @@ export function Phase3Visuals({
           const error = errors[type];
           const modelId = getModelId(modelKey);
           const envUrl = getEnvUrl(modelKey);
+          const isFirstOfKey = VISUAL_TYPES.findIndex((v) => v.modelKey === modelKey) === VISUAL_TYPES.findIndex((v) => v.type === type);
 
           return (
             <div key={type} className="rounded-2xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
@@ -165,57 +203,44 @@ export function Phase3Visuals({
                     <p className="text-xs">Not generated</p>
                   </div>
                 )}
-                {/* Env badge */}
                 {envUrl && (
-                  <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" style={{ background: "rgba(108,99,255,0.85)", color: "white" }}>
-                    Env
-                  </div>
+                  <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" style={{ background: "rgba(108,99,255,0.85)", color: "white" }}>Env</div>
                 )}
               </div>
-
               <div className="p-3">
                 <p className="text-sm font-semibold text-[var(--foreground)] mb-0.5">{label}</p>
                 <p className="text-xs text-[var(--foreground-muted)] mb-1">{desc}</p>
-                <p className="text-[10px] text-[var(--foreground-subtle)] mb-3 capitalize">
-                  Model: {modelKey === "blueprint" ? "Blueprint" : "3D Render"}
+                <p className="text-[10px] text-[var(--foreground-subtle)] mb-2 capitalize">
+                  {modelKey === "blueprint" ? "Blueprint model" : "3D Render model"}
                   {!modelId && <span style={{ color: "var(--danger)" }}> — not set</span>}
                 </p>
                 {error && (
                   <div className="flex items-start gap-1.5 mb-2 text-xs" style={{ color: "var(--danger)" }}>
-                    <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    {error}
+                    <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />{error}
                   </div>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs h-7"
+                <Button variant="outline" size="sm" className="w-full text-xs h-7 mb-2"
                   onClick={() => generateVisual(type, modelKey)}
-                  disabled={isGenerating || !modelId}
-                  isLoading={isGenerating}
-                >
+                  disabled={isGenerating || !modelId} isLoading={isGenerating}>
                   <Wand2 className="h-3 w-3" />
                   {visual ? "Regenerate" : "Generate"}
                 </Button>
+                {isFirstOfKey && <EnvImageUpload modelKey={modelKey} />}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Approval checkpoint */}
       {data.visuals.length > 0 && !approved && (
         <div className="rounded-2xl border border-[rgba(247,151,30,0.3)] p-5 mb-6" style={{ background: "rgba(247,151,30,0.05)" }}>
           <p className="text-sm font-semibold text-[var(--foreground)] mb-1">Concept Direction Checkpoint</p>
-          <p className="text-xs text-[var(--foreground-muted)] mb-4">
-            Review the generated visuals above. Approve to proceed to the iteration phase.
-          </p>
+          <p className="text-xs text-[var(--foreground-muted)] mb-4">Review the generated visuals. Approve to proceed to iteration.</p>
           <Button onClick={handleApprove} variant="gradient" size="sm">
             <CheckCircle className="h-4 w-4" /> Approve Direction
           </Button>
         </div>
       )}
-
       {approved && (
         <div className="rounded-2xl border border-[rgba(67,233,123,0.3)] p-4 mb-6 flex items-center gap-3" style={{ background: "rgba(67,233,123,0.05)" }}>
           <CheckCircle className="h-5 w-5 flex-shrink-0" style={{ color: "var(--success)" }} />
@@ -224,9 +249,9 @@ export function Phase3Visuals({
       )}
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>← Back</Button>
+        <Button variant="outline" onClick={onBack}>Back</Button>
         <Button onClick={onNext} disabled={!canProceed} variant="gradient" className="h-10 px-6">
-          Continue to Iterations →
+          Continue to Iterations
         </Button>
       </div>
     </div>

@@ -113,8 +113,6 @@ export function ConceptWizard({ imageModels, llmModels, conceptSettings }: Props
             data={session.phase3}
             blueprintModelId={blueprintModelId}
             render3dModelId={render3dModelId}
-            envBlueprintUrl={conceptSettings.envBlueprintUrl}
-            envRender3dUrl={conceptSettings.envRender3dUrl}
             onChange={updatePhase3}
             onNext={() => goToPhase(4)}
             onBack={() => goToPhase(2)}
@@ -128,8 +126,8 @@ export function ConceptWizard({ imageModels, llmModels, conceptSettings }: Props
             data={session.phase4}
             blueprintModelId={blueprintModelId}
             render3dModelId={render3dModelId}
-            envBlueprintUrl={conceptSettings.envBlueprintUrl}
-            envRender3dUrl={conceptSettings.envRender3dUrl}
+            envBlueprintUrl={session.phase3.envBlueprintUrl ?? ""}
+            envRender3dUrl={session.phase3.envRender3dUrl ?? ""}
             onChange={updatePhase4}
             onNext={() => goToPhase(5)}
             onBack={() => goToPhase(3)}

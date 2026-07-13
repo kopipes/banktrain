@@ -27,6 +27,7 @@ const mentorSchema = z.object({
   ),
   currentPrompt: z.string().optional(),
   modelId: z.string().min(1),
+  systemOverride: z.string().optional(), // custom system prompt for non-studio contexts
 });
 
 export async function POST(req: NextRequest) {
@@ -43,16 +44,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { messages, currentPrompt, modelId } = parsed.data;
+  const { messages, currentPrompt, modelId, systemOverride } = parsed.data;
 
   const model = await db.select().from(aiModels).where(eq(aiModels.id, modelId)).get();
   if (!model || !model.isActive || model.type !== "llm") {
     return NextResponse.json({ error: "LLM model not found or inactive." }, { status: 404 });
   }
 
-  // Build context messages
+  // Build context messages — use systemOverride if provided (e.g. brief advisor context)
+  const systemPrompt = systemOverride ?? CREATIVE_DIRECTOR_SYSTEM_PROMPT;
   const contextMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-    { role: "system", content: CREATIVE_DIRECTOR_SYSTEM_PROMPT },
+    { role: "system", content: systemPrompt },
     ...(currentPrompt
       ? [{ role: "user" as const, content: `[Context] My current assembled prompt is:\n\`\`\`\n${currentPrompt}\n\`\`\`` }]
       : []),

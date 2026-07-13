@@ -19,6 +19,8 @@ export interface EventBrief {
 }
 
 export interface Phase1Data {
+  briefMode: "structured" | "freetext"; // toggle between form and paragraph input
+  rawBrief: string;                      // freetext paragraph brief
   brief: EventBrief;
   paradigm: ConceptParadigm | null;
   suggestedThemes: string[];
@@ -62,6 +64,9 @@ export interface GeneratedVisual {
 export interface Phase3Data {
   approved: boolean;
   visuals: GeneratedVisual[];
+  // Per-task environment reference images (stored locally in session)
+  envBlueprintUrl: string;
+  envRender3dUrl: string;
 }
 
 // ── Phase 4: Iteration ────────────────────────────────────────────────────────
@@ -126,6 +131,8 @@ export function createDefaultSession(): ConceptSession {
     id: crypto.randomUUID(),
     currentPhase: 1,
     phase1: {
+      briefMode: "structured",
+      rawBrief: "",
       brief: {
         eventName: "",
         objective: "",
@@ -158,6 +165,8 @@ export function createDefaultSession(): ConceptSession {
     phase3: {
       approved: false,
       visuals: [],
+      envBlueprintUrl: "",
+      envRender3dUrl: "",
     },
     phase4: {
       annotations: [],
