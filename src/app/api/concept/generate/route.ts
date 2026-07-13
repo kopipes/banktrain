@@ -29,6 +29,7 @@ const generateSchema = z.object({
     area: z.string(),
   })),
   type: z.enum(["overall", "booth", "stage"]),
+  envImageUrl: z.string().optional(), // reference environment image for img2img
 });
 
 function buildImagePrompt(data: z.infer<typeof generateSchema>): string {
@@ -64,10 +65,19 @@ export async function POST(req: NextRequest) {
   try {
     // kie.ai flow
     if (model.provider === "kie.ai") {
+      const supportsImg2Img = model.modelId.includes("image-to-image") ||
+        model.modelId.includes("edit") || model.modelId.includes("remix");
+
+      const kieInput: Record<string, unknown> = { prompt, aspect_ratio: "16:9", resolution: "1K" };
+      // Use env reference image for img2img if model supports it
+      if (supportsImg2Img && data.envImageUrl) {
+        kieInput.input_urls = [data.envImageUrl];
+      }
+
       const createRes = await fetch(`${model.baseUrl}/api/v1/jobs/createTask`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${model.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: model.modelId, input: { prompt, aspect_ratio: "16:9", resolution: "1K" } }),
+        body: JSON.stringify({ model: model.modelId, input: kieInput }),
       });
       const createData = await createRes.json() as { code?: number; msg?: string; data?: { taskId?: string } };
       if (createData.code !== 200 || !createData.data?.taskId) {

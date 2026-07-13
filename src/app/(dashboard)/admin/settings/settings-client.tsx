@@ -4,9 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, BookOpen, Trophy, Eye, EyeOff, Lightbulb } from "lucide-react";
 import type { FeatureFlags } from "@/lib/feature-flags";
+import type { ConceptCreatorModelSettings } from "@/lib/concept-creator-settings";
+import type { AiModel } from "@/db/schema";
+import { ConceptCreatorModelConfig } from "./concept-creator-model-config";
 
 interface SettingsClientProps {
   initialFlags: FeatureFlags;
+  conceptSettings: ConceptCreatorModelSettings;
+  imageModels: AiModel[];
+  llmModels: AiModel[];
 }
 
 interface FlagConfig {
@@ -37,7 +43,7 @@ const FLAG_CONFIGS: FlagConfig[] = [
   },
 ];
 
-export function SettingsClient({ initialFlags }: SettingsClientProps) {
+export function SettingsClient({ initialFlags, conceptSettings, imageModels, llmModels }: SettingsClientProps) {
   const router = useRouter();
   const [flags, setFlags] = useState<FeatureFlags>(initialFlags);
   const [saving, setSaving] = useState<keyof FeatureFlags | null>(null);
@@ -67,7 +73,7 @@ export function SettingsClient({ initialFlags }: SettingsClientProps) {
   }
 
   return (
-    <div className="min-h-full bg-[var(--background)]">
+    <div className="bg-[var(--background)]">
       {/* Header */}
       <div
         className="px-8 pt-8 pb-6 border-b border-[var(--border)]"
@@ -79,7 +85,7 @@ export function SettingsClient({ initialFlags }: SettingsClientProps) {
         </div>
         <h1 className="text-2xl font-bold text-[var(--foreground)]">App Settings</h1>
         <p className="text-[var(--foreground-muted)] text-sm mt-1">
-          Control which features are visible to users.
+          Control which features are visible to users and configure AI models.
         </p>
       </div>
 
@@ -90,6 +96,7 @@ export function SettingsClient({ initialFlags }: SettingsClientProps) {
           </div>
         )}
 
+        {/* Menu visibility toggles */}
         <div className="space-y-3">
           <p className="text-xs font-bold text-[var(--foreground-subtle)] uppercase tracking-widest mb-4">
             Menu Visibility
@@ -105,28 +112,18 @@ export function SettingsClient({ initialFlags }: SettingsClientProps) {
                 className="flex items-center justify-between gap-4 p-5 rounded-2xl border transition-all duration-200"
                 style={{
                   background: "var(--surface)",
-                  borderColor: enabled
-                    ? "rgba(108,99,255,0.2)"
-                    : "var(--border)",
+                  borderColor: enabled ? "rgba(108,99,255,0.2)" : "var(--border)",
                 }}
               >
                 <div className="flex items-center gap-4">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200"
                     style={{
-                      background: enabled
-                        ? "rgba(108,99,255,0.12)"
-                        : "var(--surface-2)",
-                      border: enabled
-                        ? "1px solid rgba(108,99,255,0.2)"
-                        : "1px solid var(--border)",
+                      background: enabled ? "rgba(108,99,255,0.12)" : "var(--surface-2)",
+                      border: enabled ? "1px solid rgba(108,99,255,0.2)" : "1px solid var(--border)",
                     }}
                   >
-                    <Icon
-                      className={`h-5 w-5 transition-colors duration-200 ${
-                        enabled ? "text-[var(--accent)]" : "text-[var(--foreground-subtle)]"
-                      }`}
-                    />
+                    <Icon className={`h-5 w-5 transition-colors duration-200 ${enabled ? "text-[var(--accent)]" : "text-[var(--foreground-subtle)]"}`} />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
@@ -160,6 +157,13 @@ export function SettingsClient({ initialFlags }: SettingsClientProps) {
             );
           })}
         </div>
+
+        {/* Concept Creator model configuration */}
+        <ConceptCreatorModelConfig
+          initialSettings={conceptSettings}
+          imageModels={imageModels}
+          llmModels={llmModels}
+        />
       </div>
     </div>
   );

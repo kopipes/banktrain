@@ -12,13 +12,16 @@ interface Props {
   phase1BrandColors: string;
   phase3: Phase3Data;
   data: Phase4Data;
-  imageModelId: string;
+  blueprintModelId: string;
+  render3dModelId: string;
+  envBlueprintUrl: string;
+  envRender3dUrl: string;
   onChange: (data: Partial<Phase4Data>) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-export function Phase4Iteration({ phase1Theme, phase1BrandColors, phase3, data, imageModelId, onChange, onNext, onBack }: Props) {
+export function Phase4Iteration({ phase1Theme, phase1BrandColors, phase3, data, blueprintModelId, render3dModelId, envBlueprintUrl, envRender3dUrl, onChange, onNext, onBack }: Props) {
   const [selectedVisualIdx, setSelectedVisualIdx] = useState(0);
   const [isIterating, setIsIterating] = useState(false);
   const [iterError, setIterError] = useState("");
@@ -27,9 +30,19 @@ export function Phase4Iteration({ phase1Theme, phase1BrandColors, phase3, data, 
   const currentVisual = visuals[selectedVisualIdx];
   const canProceed = data.locked;
 
+  // Determine which model to use based on visual type
+  function getModelId(type: GeneratedVisual["type"]) {
+    return type === "overall" ? blueprintModelId : render3dModelId;
+  }
+  function getEnvUrl(type: GeneratedVisual["type"]) {
+    return type === "overall" ? envBlueprintUrl : envRender3dUrl;
+  }
+
   async function handleIterate() {
     if (!currentVisual || !data.revisionPrompt.trim()) return;
-    if (!imageModelId) { setIterError("No image model configured."); return; }
+    const modelId = getModelId(currentVisual.type);
+    const envUrl = getEnvUrl(currentVisual.type);
+    if (!modelId) { setIterError("No model configured for this visual type. Set it in Admin → Settings."); return; }
     setIsIterating(true);
     setIterError("");
 
@@ -38,12 +51,13 @@ export function Phase4Iteration({ phase1Theme, phase1BrandColors, phase3, data, 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageModelId,
+          imageModelId: modelId,
           originalImageUrl: currentVisual.imageUrl,
           revisionPrompt: data.revisionPrompt,
           type: currentVisual.type,
           theme: phase1Theme,
           brandColors: phase1BrandColors,
+          envImageUrl: envUrl || undefined,
         }),
       });
 

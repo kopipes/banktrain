@@ -14,6 +14,7 @@ const iterateSchema = z.object({
   type: z.enum(["overall", "booth", "stage"]),
   theme: z.string(),
   brandColors: z.string(),
+  envImageUrl: z.string().optional(), // reference environment image for img2img
 });
 
 export async function POST(req: NextRequest) {
@@ -36,11 +37,12 @@ export async function POST(req: NextRequest) {
 
   try {
     if (model.provider === "kie.ai") {
-      // For kie.ai, check if it supports image-to-image
       const supportsImg2Img = model.modelId.includes("image-to-image") || model.modelId.includes("edit") || model.modelId.includes("remix");
 
       const kieInput: Record<string, unknown> = { prompt, aspect_ratio: "16:9", resolution: "1K" };
-      if (supportsImg2Img) kieInput.input_urls = [data.originalImageUrl];
+      // Prefer env reference image, fall back to original generated image
+      const inputUrl = data.envImageUrl || data.originalImageUrl;
+      if (supportsImg2Img && inputUrl) kieInput.input_urls = [inputUrl];
 
       const createRes = await fetch(`${model.baseUrl}/api/v1/jobs/createTask`, {
         method: "POST",
