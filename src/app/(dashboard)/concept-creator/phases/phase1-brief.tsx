@@ -283,8 +283,17 @@ export function Phase1Brief({ data, llmModelId, onChange, onNext }: Props) {
 
       {/* Mentor chat panel */}
       {chatOpen && (
-        <div className="w-80 flex-shrink-0 flex flex-col rounded-2xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)", height: "fit-content", position: "sticky", top: "1rem" }}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+        <div
+          className="w-80 flex-shrink-0 flex flex-col rounded-2xl border border-[var(--border)] overflow-hidden"
+          style={{
+            background: "var(--surface)",
+            position: "sticky",
+            top: "1rem",
+            height: "calc(100vh - 8rem)",
+            maxHeight: "720px",
+          }}
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] flex-shrink-0">
             <div>
               <p className="text-sm font-semibold text-[var(--foreground)]">Brief Advisor</p>
               <p className="text-xs text-[var(--foreground-muted)]">AI concept strategist</p>
@@ -293,7 +302,7 @@ export function Phase1Brief({ data, llmModelId, onChange, onNext }: Props) {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 max-h-[480px]" aria-live="polite">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0" aria-live="polite">
             {chatMessages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className="max-w-[90%] rounded-xl px-3 py-2 text-xs leading-relaxed"
@@ -309,11 +318,16 @@ export function Phase1Brief({ data, llmModelId, onChange, onNext }: Props) {
             )}
             <div ref={chatEndRef} />
           </div>
-          <div className="p-3 border-t border-[var(--border)]">
+          <div className="p-3 border-t border-[var(--border)] flex-shrink-0">
             <div className="flex gap-2">
               <Input className="text-xs h-8 flex-1" placeholder="Ask the advisor..."
                 value={chatInput} onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChat()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendChat();
+                  }
+                }}
                 disabled={isChatLoading || !llmModelId} />
               <Button size="sm" className="h-8 px-3" onClick={handleSendChat}
                 disabled={isChatLoading || !chatInput.trim() || !llmModelId}>→</Button>
