@@ -20,6 +20,7 @@ import {
   Sun,
   Moon,
   Settings,
+  Lightbulb,
 } from "lucide-react";
 
 interface NavItem {
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { label: "Global Feed", href: "/feed", icon: Images },
   { label: "Library", href: "/library", icon: BookOpen },
   { label: "Challenges", href: "/challenges", icon: Trophy },
+  { label: "Concept Creator", href: "/concept-creator", icon: Lightbulb },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
 ];
 
@@ -50,9 +52,10 @@ interface SidebarProps {
   userDivision?: string;
   showLibrary?: boolean;
   showChallenges?: boolean;
+  showConceptCreator?: boolean;
 }
 
-export function Sidebar({ role, userName, userDivision, showLibrary = true, showChallenges = true }: SidebarProps) {
+export function Sidebar({ role, userName, userDivision, showLibrary = true, showChallenges = true, showConceptCreator = false }: SidebarProps) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
 
@@ -63,6 +66,7 @@ export function Sidebar({ role, userName, userDivision, showLibrary = true, show
   const visibleNavItems = navItems.filter((item) => {
     if (item.href === "/library") return showLibrary;
     if (item.href === "/challenges") return showChallenges;
+    if (item.href === "/concept-creator") return showConceptCreator;
     return true;
   });
 

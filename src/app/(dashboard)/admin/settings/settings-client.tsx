@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, BookOpen, Trophy, Eye, EyeOff } from "lucide-react";
+import { Settings, BookOpen, Trophy, Eye, EyeOff, Lightbulb } from "lucide-react";
 import type { FeatureFlags } from "@/lib/feature-flags";
 
 interface SettingsClientProps {
@@ -28,6 +28,12 @@ const FLAG_CONFIGS: FlagConfig[] = [
     label: "Challenges",
     description: "Allow users to access structured prompting challenges.",
     icon: Trophy,
+  },
+  {
+    key: "showConceptCreator",
+    label: "Concept Creator",
+    description: "AI-powered event concept wizard — brief ingestion, visual generation, and pitch deck export.",
+    icon: Lightbulb,
   },
 ];
 

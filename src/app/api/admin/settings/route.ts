@@ -8,6 +8,7 @@ import { getFeatureFlags } from "@/lib/feature-flags";
 const updateSchema = z.object({
   showLibrary: z.boolean().optional(),
   showChallenges: z.boolean().optional(),
+  showConceptCreator: z.boolean().optional(),
 });
 
 export async function GET(req: NextRequest) {

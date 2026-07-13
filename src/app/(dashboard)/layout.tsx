@@ -22,6 +22,7 @@ export default async function DashboardLayout({
         userDivision={user.division ?? ""}
         showLibrary={flags.showLibrary}
         showChallenges={flags.showChallenges}
+        showConceptCreator={flags.showConceptCreator}
       />
       <main className="flex-1 overflow-auto">{children}</main>
     </div>

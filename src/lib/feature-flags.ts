@@ -4,11 +4,13 @@ import { appSettings } from "@/db/schema";
 export interface FeatureFlags {
   showLibrary: boolean;
   showChallenges: boolean;
+  showConceptCreator: boolean;
 }
 
 const DEFAULTS: FeatureFlags = {
   showLibrary: true,
   showChallenges: true,
+  showConceptCreator: false,
 };
 
 /**
