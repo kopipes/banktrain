@@ -5,7 +5,6 @@ import { aiModels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { trackTokenUsage } from "@/lib/token-tracker";
 import { z } from "zod";
-import OpenAI from "openai";
 
 const CREATIVE_DIRECTOR_SYSTEM_PROMPT = `You are an expert Creative Director and AI Image Prompting Specialist.
 Your role is to help users craft precise, high-quality prompts for AI image generation.
@@ -51,30 +50,57 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "LLM model not found or inactive." }, { status: 404 });
   }
 
+  // Build context messages
+  const contextMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: CREATIVE_DIRECTOR_SYSTEM_PROMPT },
+    ...(currentPrompt
+      ? [{ role: "user" as const, content: `[Context] My current assembled prompt is:\n\`\`\`\n${currentPrompt}\n\`\`\`` }]
+      : []),
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  ];
+
   try {
-    const client = new OpenAI({
-      apiKey: model.apiKey,
-      baseURL: model.baseUrl,
+    // Some providers (e.g. openagentic) append `data: [DONE]\n\n` after the JSON
+    // body even when stream=false, which breaks JSON.parse. Use raw fetch and
+    // strip the SSE trailer before parsing.
+    const rawRes = await fetch(`${model.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${model.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model.modelId,
+        messages: contextMessages,
+        max_tokens: 512,
+        temperature: 0.7,
+        stream: false,
+      }),
     });
 
-    // currentPrompt is placed in a clearly delimited user-turn message to prevent
-    // prompt injection from overriding the system persona
-    const contextMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: CREATIVE_DIRECTOR_SYSTEM_PROMPT },
-      ...(currentPrompt
-        ? [{ role: "user" as const, content: `[Context] My current assembled prompt is:\n\`\`\`\n${currentPrompt}\n\`\`\`` }]
-        : []),
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-    ];
+    if (!rawRes.ok) {
+      const errText = await rawRes.text();
+      return NextResponse.json(
+        { error: `API error ${rawRes.status}: ${errText.slice(0, 200)}` },
+        { status: 500 }
+      );
+    }
 
-    const response = await client.chat.completions.create({
-      model: model.modelId,
-      messages: contextMessages,
-      max_tokens: 512,
-      temperature: 0.7,
-    });
+    const rawText = await rawRes.text();
+    // Strip trailing SSE `data: [DONE]` trailer appended by some providers
+    const jsonText = rawText.replace(/\s*data:\s*\[DONE\]\s*$/, "").trim();
 
-    const rawApiResponse = response as unknown as Record<string, unknown>;
+    let parsed: { choices?: Array<{ message?: { content?: string } }>; usage?: Record<string, unknown> };
+    try {
+      parsed = JSON.parse(jsonText) as typeof parsed;
+    } catch {
+      return NextResponse.json(
+        { error: `Failed to parse API response: ${jsonText.slice(0, 200)}` },
+        { status: 500 }
+      );
+    }
+
+    const rawApiResponse = parsed as unknown as Record<string, unknown>;
 
     // Track LLM token usage
     await trackTokenUsage({
@@ -87,7 +113,7 @@ export async function POST(req: NextRequest) {
       rawApiResponse,
     });
 
-    const content = response.choices[0]?.message?.content ?? "";
+    const content = parsed.choices?.[0]?.message?.content ?? "";
     return NextResponse.json({ content });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
