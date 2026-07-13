@@ -6,12 +6,34 @@ import { createDefaultSession } from "../types";
 
 const STORAGE_KEY = "concept_creator_session";
 
+/** Merge stored session with fresh defaults to handle missing fields after upgrades */
+function migrateSession(stored: ConceptSession): ConceptSession {
+  const fresh = createDefaultSession();
+  return {
+    ...fresh,
+    ...stored,
+    phase1: {
+      ...fresh.phase1,
+      ...stored.phase1,
+      // Ensure new fields exist
+      briefMode: stored.phase1?.briefMode ?? "structured",
+      rawBrief: stored.phase1?.rawBrief ?? "",
+    },
+    phase3: {
+      ...fresh.phase3,
+      ...stored.phase3,
+      envBlueprintUrl: stored.phase3?.envBlueprintUrl ?? "",
+      envRender3dUrl: stored.phase3?.envRender3dUrl ?? "",
+    },
+  };
+}
+
 export function useConceptSession() {
   const [session, setSession] = useState<ConceptSession>(() => {
     if (typeof window === "undefined") return createDefaultSession();
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) return JSON.parse(stored) as ConceptSession;
+      if (stored) return migrateSession(JSON.parse(stored) as ConceptSession);
     } catch {
       // ignore
     }
