@@ -123,7 +123,7 @@ export function ConceptWizard({ projectId, imageModels, llmModels, conceptSettin
       </div>
 
       {/* Phase content */}
-      <div className="flex-1">
+      <div className="flex-1 px-8 py-6">
         {phase === 1 && (
           <Phase1Brief
             data={session.phase1}
