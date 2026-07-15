@@ -15,8 +15,7 @@ interface Props {
 }
 
 export function Phase2Infrastructure({ data, onChange, onNext, onBack }: Props) {
-  const canProceed = data.venue.venueName && data.venue.venueWidth && data.venue.venueLength &&
-    data.components.some((c) => c.enabled);
+  const canProceed = true;
 
   function updateVenue(key: keyof Phase2Data["venue"], value: string | boolean) {
     onChange({ venue: { ...data.venue, [key]: value } });
@@ -53,15 +52,15 @@ export function Phase2Infrastructure({ data, onChange, onNext, onBack }: Props) 
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <Label htmlFor="venueName">Venue Name *</Label>
+            <Label htmlFor="venueName">Venue Name</Label>
             <Input id="venueName" className="mt-1" placeholder="e.g. Jakarta Convention Center" value={data.venue.venueName} onChange={(e) => updateVenue("venueName", e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="venueWidth">Width (meters) *</Label>
+            <Label htmlFor="venueWidth">Width (meters)</Label>
             <Input id="venueWidth" type="number" className="mt-1" placeholder="e.g. 80" value={data.venue.venueWidth} onChange={(e) => updateVenue("venueWidth", e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="venueLength">Length (meters) *</Label>
+            <Label htmlFor="venueLength">Length (meters)</Label>
             <Input id="venueLength" type="number" className="mt-1" placeholder="e.g. 120" value={data.venue.venueLength} onChange={(e) => updateVenue("venueLength", e.target.value)} />
           </div>
           <div>
