@@ -8,12 +8,14 @@ import { Phase4Iteration } from "./phases/phase4-iteration";
 import { Phase5Deck } from "./phases/phase5-deck";
 import type { AiModel } from "@/db/schema";
 import type { ConceptCreatorModelSettings } from "@/lib/concept-creator-settings";
-import { Check } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 
 interface Props {
+  projectId: string;
   imageModels: AiModel[];
   llmModels: AiModel[];
   conceptSettings: ConceptCreatorModelSettings;
+  onExit: () => void;
 }
 
 const PHASES = [
@@ -24,8 +26,8 @@ const PHASES = [
   { label: "Deck", num: 5 },
 ] as const;
 
-export function ConceptWizard({ imageModels, llmModels, conceptSettings }: Props) {
-  const { session, updatePhase1, updatePhase2, updatePhase3, updatePhase4, updatePhase5, goToPhase, resetSession } = useConceptSession();
+export function ConceptWizard({ projectId, imageModels, llmModels, conceptSettings, onExit }: Props) {
+  const { session, isLoading, updatePhase1, updatePhase2, updatePhase3, updatePhase4, updatePhase5, goToPhase } = useConceptSession(projectId);
 
   // Resolve model IDs — prefer admin-assigned, fall back to default/first
   const resolveModel = (assignedId: string, models: AiModel[]) => {
@@ -40,11 +42,29 @@ export function ConceptWizard({ imageModels, llmModels, conceptSettings }: Props
 
   const phase = session.currentPhase;
 
+  if (isLoading) {
+    return (
+      <div className="min-h-full bg-[var(--background)] flex items-center justify-center">
+        <p className="text-sm text-[var(--muted-foreground)]">Loading project…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full bg-[var(--background)]">
       {/* Header */}
       <div className="px-8 pt-8 pb-6 border-b border-[var(--border)]"
         style={{ background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)" }}>
+
+        {/* Back to projects */}
+        <button
+          onClick={onExit}
+          className="flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          All projects
+        </button>
+
         <h1 className="text-2xl font-bold text-[var(--foreground)] mb-4">Concept Creator</h1>
 
         {/* Phase stepper */}
@@ -55,33 +75,26 @@ export function ConceptWizard({ imageModels, llmModels, conceptSettings }: Props
             return (
               <div key={num} className="flex items-center">
                 <button
-                  onClick={() => isComplete && goToPhase(num)}
+                  onClick={() => isComplete ? goToPhase(num) : undefined}
                   disabled={!isComplete}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-150"
-                  style={{
-                    background: isActive ? "rgba(108,99,255,0.12)" : "transparent",
-                    cursor: isComplete ? "pointer" : "default",
-                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                      : isComplete
+                      ? "text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer"
+                      : "text-[var(--muted-foreground)] cursor-default"
+                  }`}
                 >
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{
-                      background: isComplete ? "var(--success)" : isActive ? "var(--accent)" : "var(--surface-2)",
-                      color: isComplete || isActive ? "white" : "var(--foreground-subtle)",
-                      border: isActive ? "2px solid var(--accent)" : "none",
-                    }}
-                  >
-                    {isComplete ? <Check className="h-3 w-3" /> : num}
-                  </div>
-                  <span
-                    className="text-xs font-medium hidden sm:block"
-                    style={{ color: isActive ? "var(--accent)" : isComplete ? "var(--foreground-muted)" : "var(--foreground-subtle)" }}
-                  >
-                    {label}
-                  </span>
+                  {isComplete && <Check className="w-3.5 h-3.5" />}
+                  {!isComplete && (
+                    <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${
+                      isActive ? "border-[var(--primary-foreground)] text-[var(--primary-foreground)]" : "border-current"
+                    }`}>{num}</span>
+                  )}
+                  {label}
                 </button>
                 {i < PHASES.length - 1 && (
-                  <div className="w-6 h-px mx-1" style={{ background: phase > num ? "var(--success)" : "var(--border)" }} />
+                  <div className={`w-6 h-px mx-1 ${phase > num ? "bg-[var(--primary)]" : "bg-[var(--border)]"}`} />
                 )}
               </div>
             );
@@ -89,7 +102,8 @@ export function ConceptWizard({ imageModels, llmModels, conceptSettings }: Props
         </div>
       </div>
 
-      <div className="p-8">
+      {/* Phase content */}
+      <div className="flex-1">
         {phase === 1 && (
           <Phase1Brief
             data={session.phase1}
@@ -140,7 +154,7 @@ export function ConceptWizard({ imageModels, llmModels, conceptSettings }: Props
             data={session.phase5}
             onChange={updatePhase5}
             onBack={() => goToPhase(4)}
-            onReset={resetSession}
+            onReset={onExit}
           />
         )}
       </div>

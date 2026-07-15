@@ -241,6 +241,34 @@ export const negativePromptProfiles = sqliteTable("negative_prompt_profiles", {
     .default(sql`(datetime('now'))`),
 });
 
+// ── Concept Creator Projects ──────────────────────────────────────────────────
+export const conceptProjects = sqliteTable(
+  "concept_projects",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("Untitled Project"),
+    currentPhase: integer("current_phase").notNull().default(1), // 1-5
+    // Full session state stored as JSON — mirrors ConceptSession shape
+    sessionData: text("session_data").notNull(), // JSON
+    status: text("status", { enum: ["in_progress", "completed"] })
+      .notNull()
+      .default("in_progress"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    userIdx: index("concept_projects_user_idx").on(t.userId),
+    updatedAtIdx: index("concept_projects_updated_at_idx").on(t.updatedAt),
+  })
+);
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 // ── App Settings ─────────────────────────────────────────────────────────────
 // Key/value store for app-wide admin-controlled feature flags.
@@ -265,3 +293,5 @@ export type ChallengeSubmission = typeof challengeSubmissions.$inferSelect;
 export type PromptLibraryEntry = typeof promptLibrary.$inferSelect;
 export type DivisionQuota = typeof divisionQuotas.$inferSelect;
 export type AppSetting = typeof appSettings.$inferSelect;
+export type ConceptProject = typeof conceptProjects.$inferSelect;
+export type NewConceptProject = typeof conceptProjects.$inferInsert;

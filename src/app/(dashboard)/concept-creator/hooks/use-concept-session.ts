@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { ConceptSession } from "../types";
 import { createDefaultSession } from "../types";
-
-const STORAGE_KEY = "concept_creator_session";
 
 /** Merge stored session with fresh defaults to handle missing fields after upgrades */
 function migrateSession(stored: ConceptSession): ConceptSession {
@@ -15,7 +13,6 @@ function migrateSession(stored: ConceptSession): ConceptSession {
     phase1: {
       ...fresh.phase1,
       ...stored.phase1,
-      // Ensure new fields exist
       briefMode: stored.phase1?.briefMode ?? "structured",
       rawBrief: stored.phase1?.rawBrief ?? "",
     },
@@ -28,26 +25,64 @@ function migrateSession(stored: ConceptSession): ConceptSession {
   };
 }
 
-export function useConceptSession() {
-  const [session, setSession] = useState<ConceptSession>(() => {
-    if (typeof window === "undefined") return createDefaultSession();
-    try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) return migrateSession(JSON.parse(stored) as ConceptSession);
-    } catch {
-      // ignore
-    }
-    return createDefaultSession();
-  });
+async function loadProject(projectId: string): Promise<ConceptSession | null> {
+  try {
+    const res = await fetch(`/api/concept/projects/${projectId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return migrateSession(data.sessionData as ConceptSession);
+  } catch {
+    return null;
+  }
+}
 
-  // Persist to sessionStorage on every change
+async function saveProject(projectId: string, session: ConceptSession): Promise<void> {
+  try {
+    await fetch(`/api/concept/projects/${projectId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionData: session }),
+    });
+  } catch {
+    // best-effort — silent failure so the user isn't blocked
+  }
+}
+
+export function useConceptSession(projectId: string) {
+  const [session, setSession] = useState<ConceptSession>(createDefaultSession);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Ref to debounce server saves
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestSession = useRef<ConceptSession>(session);
+
+  // Load from server on mount
   useEffect(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    } catch {
-      // ignore quota errors
-    }
-  }, [session]);
+    let cancelled = false;
+    setIsLoading(true);
+    loadProject(projectId).then((loaded) => {
+      if (cancelled) return;
+      if (loaded) {
+        setSession(loaded);
+        latestSession.current = loaded;
+      }
+      setIsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  // Debounced server save on every session change (skip initial empty state)
+  useEffect(() => {
+    if (isLoading) return;
+    latestSession.current = session;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveProject(projectId, latestSession.current);
+    }, 800);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [session, isLoading, projectId]);
 
   const updatePhase1 = useCallback((data: Partial<ConceptSession["phase1"]>) => {
     setSession((prev) => ({ ...prev, phase1: { ...prev.phase1, ...data } }));
@@ -73,14 +108,15 @@ export function useConceptSession() {
     setSession((prev) => ({ ...prev, currentPhase: phase }));
   }, []);
 
+  // resetSession is no longer used from the hook — the wizard navigates back to the list instead
   const resetSession = useCallback(() => {
     const fresh = createDefaultSession();
     setSession(fresh);
-    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
   return {
     session,
+    isLoading,
     updatePhase1,
     updatePhase2,
     updatePhase3,

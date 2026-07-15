@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { getFeatureFlags } from "@/lib/feature-flags";
 import { getConceptCreatorSettings } from "@/lib/concept-creator-settings";
 import { redirect } from "next/navigation";
-import { ConceptWizard } from "./concept-wizard";
+import { ConceptCreatorShell } from "./concept-creator-shell";
 
 export default async function ConceptCreatorPage() {
   const flags = await getFeatureFlags();
@@ -28,7 +28,7 @@ export default async function ConceptCreatorPage() {
   const safeLlmModels = llmModels.map(({ apiKey: _, ...m }) => ({ ...m, apiKey: "" }));
 
   return (
-    <ConceptWizard
+    <ConceptCreatorShell
       imageModels={safeImageModels}
       llmModels={safeLlmModels}
       conceptSettings={conceptSettings}

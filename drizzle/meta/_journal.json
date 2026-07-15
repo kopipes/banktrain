@@ -15,6 +15,13 @@
       "when": 1783642124483,
       "tag": "0001_chief_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784087982888,
+      "tag": "0002_luxuriant_blade",
+      "breakpoints": true
     }
   ]
 }
