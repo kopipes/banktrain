@@ -44,28 +44,35 @@ export function ConceptWizard({ projectId, imageModels, llmModels, conceptSettin
 
   if (isLoading) {
     return (
-      <div className="min-h-full bg-[var(--background)] flex items-center justify-center">
-        <p className="text-sm text-[var(--muted-foreground)]">Loading project…</p>
+      <div className="min-h-full flex items-center justify-center" style={{ background: "var(--background)" }}>
+        <p className="text-sm" style={{ color: "var(--foreground-muted)" }}>Loading project…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-full bg-[var(--background)]">
+    <div className="min-h-full" style={{ background: "var(--background)" }}>
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-[var(--border)]"
-        style={{ background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)" }}>
-
+      <div
+        className="px-8 pt-8 pb-6"
+        style={{
+          borderBottom: "1px solid var(--border)",
+          background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)",
+        }}
+      >
         {/* Back to projects */}
         <button
           onClick={onExit}
-          className="flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] mb-4 transition-colors"
+          className="flex items-center gap-1.5 text-sm mb-4 transition-colors hover:opacity-80"
+          style={{ color: "var(--foreground-muted)" }}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           All projects
         </button>
 
-        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-4">Concept Creator</h1>
+        <h1 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>
+          Concept Creator
+        </h1>
 
         {/* Phase stepper */}
         <div className="flex items-center gap-0">
@@ -77,24 +84,37 @@ export function ConceptWizard({ projectId, imageModels, llmModels, conceptSettin
                 <button
                   onClick={() => isComplete ? goToPhase(num) : undefined}
                   disabled={!isComplete}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                  style={{
+                    background: isActive ? "var(--accent)" : "transparent",
+                    color: isActive
+                      ? "#ffffff"
                       : isComplete
-                      ? "text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer"
-                      : "text-[var(--muted-foreground)] cursor-default"
-                  }`}
+                      ? "var(--accent)"
+                      : "var(--foreground-muted)",
+                    cursor: isComplete ? "pointer" : "default",
+                  }}
                 >
-                  {isComplete && <Check className="w-3.5 h-3.5" />}
-                  {!isComplete && (
-                    <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${
-                      isActive ? "border-[var(--primary-foreground)] text-[var(--primary-foreground)]" : "border-current"
-                    }`}>{num}</span>
+                  {isComplete ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : (
+                    <span
+                      className="w-5 h-5 rounded-full border flex items-center justify-center text-xs"
+                      style={{
+                        borderColor: isActive ? "#ffffff" : "currentColor",
+                        color: isActive ? "#ffffff" : "currentColor",
+                      }}
+                    >
+                      {num}
+                    </span>
                   )}
                   {label}
                 </button>
                 {i < PHASES.length - 1 && (
-                  <div className={`w-6 h-px mx-1 ${phase > num ? "bg-[var(--primary)]" : "bg-[var(--border)]"}`} />
+                  <div
+                    className="w-6 h-px mx-1"
+                    style={{ background: phase > num ? "var(--accent)" : "var(--border)" }}
+                  />
                 )}
               </div>
             );

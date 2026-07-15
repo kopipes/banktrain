@@ -86,24 +86,30 @@ export function ConceptProjectList({ onCreate, onOpen }: Props) {
   };
 
   return (
-    <div className="min-h-full bg-[var(--background)]">
+    <div className="min-h-full" style={{ background: "var(--background)" }}>
       {/* Header */}
       <div
-        className="px-8 pt-8 pb-6 border-b border-[var(--border)]"
-        style={{ background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)" }}
+        className="px-8 pt-8 pb-6"
+        style={{
+          borderBottom: "1px solid var(--border)",
+          background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)",
+        }}
       >
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Concept Creator</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+            Concept Creator
+          </h1>
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50 hover:opacity-80"
+            style={{ background: "var(--accent)", color: "#ffffff" }}
           >
             <Plus className="w-4 h-4" />
             {creating ? "Creating…" : "New Concept"}
           </button>
         </div>
-        <p className="text-sm text-[var(--muted-foreground)]">
+        <p className="text-sm" style={{ color: "var(--foreground-muted)" }}>
           Your saved concept projects — pick up where you left off
         </p>
       </div>
@@ -111,18 +117,19 @@ export function ConceptProjectList({ onCreate, onOpen }: Props) {
       {/* Content */}
       <div className="px-8 py-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-[var(--muted-foreground)] text-sm">
+          <div className="flex items-center justify-center py-20 text-sm" style={{ color: "var(--foreground-muted)" }}>
             Loading projects…
           </div>
         ) : projects.length === 0 ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <Folder className="w-12 h-12 text-[var(--muted-foreground)] opacity-40" />
-            <p className="text-[var(--muted-foreground)] text-sm">No projects yet</p>
+            <Folder className="w-12 h-12 opacity-30" style={{ color: "var(--foreground-subtle)" }} />
+            <p className="text-sm" style={{ color: "var(--foreground-muted)" }}>No projects yet</p>
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50 hover:opacity-80"
+              style={{ background: "var(--accent)", color: "#ffffff" }}
             >
               <Plus className="w-4 h-4" />
               {creating ? "Creating…" : "Start your first concept"}
@@ -134,13 +141,32 @@ export function ConceptProjectList({ onCreate, onOpen }: Props) {
               <button
                 key={p.id}
                 onClick={() => onOpen(p.id)}
-                className="group relative text-left rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 hover:border-[var(--primary)] hover:shadow-md transition-all"
+                className="group relative text-left rounded-xl p-5 transition-all hover:shadow-lg"
+                style={{
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                }}
               >
                 {/* Delete button */}
                 <button
                   onClick={(e) => handleDelete(e, p.id)}
                   disabled={deletingId === p.id}
-                  className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 hover:text-[var(--destructive)] text-[var(--muted-foreground)] transition-all"
+                  className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                  style={{ color: "var(--foreground-muted)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.color = "var(--danger)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(220,38,38,0.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.color = "var(--foreground-muted)";
+                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                  }}
                   title="Delete project"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -149,16 +175,13 @@ export function ConceptProjectList({ onCreate, onOpen }: Props) {
                 {/* Status badge */}
                 <div className="flex items-center gap-1.5 mb-3">
                   {p.status === "completed" ? (
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                    <CheckCircle className="w-3.5 h-3.5" style={{ color: "var(--success)" }} />
                   ) : (
-                    <Clock className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                    <Clock className="w-3.5 h-3.5" style={{ color: "var(--foreground-subtle)" }} />
                   )}
                   <span
-                    className={`text-xs font-medium ${
-                      p.status === "completed"
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-[var(--muted-foreground)]"
-                    }`}
+                    className="text-xs font-medium"
+                    style={{ color: p.status === "completed" ? "var(--success)" : "var(--foreground-muted)" }}
                   >
                     {phaseLabel(p.currentPhase, p.status)}
                   </span>
@@ -168,31 +191,34 @@ export function ConceptProjectList({ onCreate, onOpen }: Props) {
                 <div className="flex gap-1 mb-4">
                   {PHASE_LABELS.map((_, i) => {
                     const phaseNum = i + 1;
-                    const filled =
-                      p.status === "completed" || phaseNum < p.currentPhase;
+                    const filled = p.status === "completed" || phaseNum < p.currentPhase;
                     const active = phaseNum === p.currentPhase && p.status !== "completed";
                     return (
                       <div
                         key={i}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          filled
-                            ? "bg-[var(--primary)]"
+                        className="h-1 flex-1 rounded-full transition-colors"
+                        style={{
+                          background: filled
+                            ? "var(--accent)"
                             : active
-                            ? "bg-[var(--primary)]/50"
-                            : "bg-[var(--border)]"
-                        }`}
+                            ? "var(--accent-dim)"
+                            : "var(--surface-3)",
+                        }}
                       />
                     );
                   })}
                 </div>
 
                 {/* Title */}
-                <p className="text-sm font-semibold text-[var(--foreground)] line-clamp-2 mb-2 pr-6">
+                <p
+                  className="text-sm font-semibold line-clamp-2 mb-2 pr-6"
+                  style={{ color: "var(--foreground)" }}
+                >
                   {p.title}
                 </p>
 
                 {/* Timestamp */}
-                <p className="text-xs text-[var(--muted-foreground)]">
+                <p className="text-xs" style={{ color: "var(--foreground-subtle)" }}>
                   Updated {timeAgo(p.updatedAt)}
                 </p>
               </button>
