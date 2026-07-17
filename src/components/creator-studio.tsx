@@ -418,7 +418,7 @@ export function CreatorStudio({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       {/* ── Left: Controls ─────────────────────────────────────────────── */}
       <div className="w-96 flex-shrink-0 overflow-y-auto border-r border-gray-200 bg-white p-6">
         <h1 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">

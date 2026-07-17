@@ -438,7 +438,7 @@ export function AdminModelsClient({ initialModels }: { initialModels: SafeModel[
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-full p-8" style={{ background: "var(--background)" }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

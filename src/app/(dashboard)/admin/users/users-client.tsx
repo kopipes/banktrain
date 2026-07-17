@@ -63,7 +63,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: User[] }) {
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-full p-8" style={{ background: "var(--background)" }}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>

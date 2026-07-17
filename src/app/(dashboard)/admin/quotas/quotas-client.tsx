@@ -43,7 +43,7 @@ export function AdminQuotasClient({
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-full p-8" style={{ background: "var(--background)" }}>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Quotas &amp; Budget</h1>
         <p className="text-gray-500 mt-1">
