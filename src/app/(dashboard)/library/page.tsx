@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { promptLibrary, users, generations } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { Sparkles } from "lucide-react";
 import { getFeatureFlags } from "@/lib/feature-flags";
 import { redirect } from "next/navigation";
@@ -41,6 +41,41 @@ export default async function LibraryPage() {
     .orderBy(desc(promptLibrary.likes), desc(promptLibrary.createdAt))
     .limit(60);
 
+  // For own entries that have no generationId but have an imageUrl,
+  // try to find the matching generation by imageUrl so the feed toggle works.
+  const missingGenIds = entries.filter(
+    (e) => e.userId === user.id && !e.generationId && e.imageUrl
+  );
+
+  let imageUrlToGenMap = new Map<string, { id: string; isPublic: boolean }>();
+  if (missingGenIds.length > 0) {
+    const imageUrls = missingGenIds.map((e) => e.imageUrl!);
+    const matched = await db
+      .select({ id: generations.id, imageUrl: generations.imageUrl, isPublic: generations.isPublic })
+      .from(generations)
+      .where(
+        and(
+          eq(generations.userId, user.id),
+          inArray(generations.imageUrl, imageUrls)
+        )
+      )
+      .all();
+    for (const g of matched) {
+      if (g.imageUrl) imageUrlToGenMap.set(g.imageUrl, { id: g.id, isPublic: g.isPublic });
+    }
+  }
+
+  // Merge: fill in generationId + isPublic for entries that were missing it
+  const enrichedEntries = entries.map((e) => {
+    if (e.userId === user.id && !e.generationId && e.imageUrl) {
+      const found = imageUrlToGenMap.get(e.imageUrl);
+      if (found) {
+        return { ...e, generationId: found.id, isPublic: found.isPublic };
+      }
+    }
+    return e;
+  });
+
   return (
     <div className="min-h-full bg-[var(--background)]">
       {/* Header */}
@@ -59,7 +94,7 @@ export default async function LibraryPage() {
       </div>
 
       <div className="p-8">
-        <LibraryGrid entries={entries} currentUserId={user.id} />
+        <LibraryGrid entries={enrichedEntries} currentUserId={user.id} />
       </div>
     </div>
   );

@@ -84,6 +84,7 @@ export function FeedActions({
         steps: generation.steps,
         aspectRatio: generation.aspectRatio,
         imageUrl: generation.imageUrl,
+        generationId: generation.id,
         forkedFromId: generation.id,
       }),
     });
