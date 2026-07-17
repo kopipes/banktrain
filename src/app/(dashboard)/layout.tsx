@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   const flags = await getFeatureFlags();
 
   return (
-    <div className="flex min-h-screen bg-[var(--background)]">
+    <div className="flex h-screen bg-[var(--background)]">
       <Sidebar
         role={user.role}
         userName={user.name ?? ""}

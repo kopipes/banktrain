@@ -72,7 +72,7 @@ export function Sidebar({ role, userName, userDivision, showLibrary = true, show
 
   return (
     <aside
-      className="flex flex-col w-64 min-h-screen px-3 py-4 border-r border-[var(--border)]"
+      className="flex flex-col w-64 h-full overflow-y-auto px-3 py-4 border-r border-[var(--border)]"
       style={{ background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)" }}
     >
       {/* Logo */}

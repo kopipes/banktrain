@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Injected before first paint to avoid theme flash */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-full" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+      <body className="h-full" style={{ background: "var(--background)", color: "var(--foreground)" }}>
         <SessionProvider>
           <ThemeProvider>
             {children}
