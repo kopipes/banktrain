@@ -42,7 +42,7 @@ export default async function LibraryPage() {
     .limit(60);
 
   return (
-    <div className="bg-[var(--background)]">
+    <div className="min-h-full bg-[var(--background)]">
       {/* Header */}
       <div
         className="px-8 pt-8 pb-6 border-b border-[var(--border)]"
