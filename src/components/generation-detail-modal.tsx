@@ -14,6 +14,7 @@ import {
 
 export interface FeedGeneration {
   id: string;
+  userId?: string | null;
   fullPrompt?: string | null;
   imageUrl?: string | null;
   style?: string | null;

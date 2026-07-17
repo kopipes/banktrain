@@ -7,6 +7,7 @@ import { FeedGrid } from "./feed-grid";
 
 export default async function FeedPage() {
   const session = await auth();
+  const currentUser = session?.user as { id?: string } | undefined;
 
   const publicGens = await db
     .select({
@@ -54,7 +55,7 @@ export default async function FeedPage() {
       </div>
 
       <div className="p-8">
-        <FeedGrid generations={publicGens} />
+        <FeedGrid generations={publicGens} currentUserId={currentUser?.id} />
       </div>
     </div>
   );

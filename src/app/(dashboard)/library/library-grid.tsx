@@ -61,29 +61,16 @@ export function LibraryGrid({ entries, currentUserId }: Props) {
               </div>
             )}
 
-            <div className="flex-1 flex flex-col p-4">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-semibold text-[var(--foreground)] leading-snug text-sm">{entry.title}</h3>
-                <div className="flex items-center gap-1 flex-shrink-0 text-[var(--foreground-muted)]">
-                  <span className="text-xs">♥</span>
-                  <span className="text-xs">{entry.likes}</span>
-                </div>
-              </div>
-
+            <div className="p-4 flex flex-col flex-1">
+              <p className="text-sm font-semibold text-[var(--foreground)] mb-1 line-clamp-1">{entry.title}</p>
               {entry.description && (
-                <p className="text-xs text-[var(--foreground-muted)] mb-3 line-clamp-2 leading-relaxed">
-                  {entry.description}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)] mb-2 line-clamp-2">{entry.description}</p>
               )}
-
-              <div
-                className="font-mono text-xs text-[var(--foreground-muted)] rounded-xl p-2.5 line-clamp-2 mb-3 leading-relaxed"
-                style={{ background: "var(--surface-2)" }}
-              >
+              <p className="text-xs text-[var(--foreground-subtle)] line-clamp-3 mb-3 leading-relaxed flex-1">
                 {entry.fullPrompt}
-              </div>
+              </p>
 
-              <div className="flex flex-wrap gap-1.5 mb-3">
+              <div className="flex flex-wrap gap-1 mb-3">
                 {entry.style && <Badge variant="default">{entry.style}</Badge>}
                 {entry.aspectRatio && <Badge variant="outline">{entry.aspectRatio}</Badge>}
                 {entry.cfgScale && <Badge variant="secondary">CFG {entry.cfgScale}</Badge>}
@@ -109,6 +96,7 @@ export function LibraryGrid({ entries, currentUserId }: Props) {
 
       <LibraryDetailModal
         entry={selected}
+        currentUserId={currentUserId}
         onClose={() => setSelected(null)}
       />
     </>

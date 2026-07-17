@@ -9,12 +9,17 @@ import Link from "next/link";
 
 interface Props {
   generations: FeedGeneration[];
+  currentUserId?: string;
 }
 
-export function FeedGrid({ generations }: Props) {
+export function FeedGrid({ generations, currentUserId }: Props) {
+  const [items, setItems] = useState<FeedGeneration[]>(generations);
   const [selected, setSelected] = useState<FeedGeneration | null>(null);
-  // Set of generation IDs already saved to library (matched via forkedFromId)
   const [savedGenIds, setSavedGenIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setItems(generations);
+  }, [generations]);
 
   useEffect(() => {
     fetch("/api/library")
@@ -34,7 +39,12 @@ export function FeedGrid({ generations }: Props) {
     setSavedGenIds((prev) => new Set(prev).add(genId));
   }
 
-  if (generations.length === 0) {
+  function removeFromFeed(genId: string) {
+    setItems((prev) => prev.filter((g) => g.id !== genId));
+    if (selected?.id === genId) setSelected(null);
+  }
+
+  if (items.length === 0) {
     return (
       <div
         className="rounded-2xl border border-[var(--border)] border-dashed p-16 text-center"
@@ -60,7 +70,7 @@ export function FeedGrid({ generations }: Props) {
   return (
     <>
       <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
-        {generations.map((gen) => (
+        {items.map((gen) => (
           <div
             key={gen.id}
             className="break-inside-avoid rounded-2xl overflow-hidden border border-[var(--border)] group transition-all duration-300 hover:border-[var(--border-bright)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)] cursor-pointer"
@@ -100,8 +110,10 @@ export function FeedGrid({ generations }: Props) {
               <div onClick={(e) => e.stopPropagation()}>
                 <FeedActions
                   generation={gen}
+                  currentUserId={currentUserId}
                   alreadySaved={savedGenIds.has(gen.id)}
                   onSaved={() => markSaved(gen.id)}
+                  onRemovedFromFeed={() => removeFromFeed(gen.id)}
                 />
               </div>
             </div>

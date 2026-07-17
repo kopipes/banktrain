@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { promptLibrary, users } from "@/db/schema";
+import { promptLibrary, users, generations } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { Sparkles } from "lucide-react";
 import { getFeatureFlags } from "@/lib/feature-flags";
@@ -28,13 +28,16 @@ export default async function LibraryPage() {
       aspectRatio: promptLibrary.aspectRatio,
       imageUrl: promptLibrary.imageUrl,
       forkedFromId: promptLibrary.forkedFromId,
+      generationId: promptLibrary.generationId,
       likes: promptLibrary.likes,
       createdAt: promptLibrary.createdAt,
       userId: promptLibrary.userId,
       userName: users.name,
+      isPublic: generations.isPublic,
     })
     .from(promptLibrary)
     .innerJoin(users, eq(promptLibrary.userId, users.id))
+    .leftJoin(generations, eq(promptLibrary.generationId, generations.id))
     .orderBy(desc(promptLibrary.likes), desc(promptLibrary.createdAt))
     .limit(60);
 
