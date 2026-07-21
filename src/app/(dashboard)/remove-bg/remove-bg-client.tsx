@@ -23,50 +23,73 @@ function removeGeminiWatermark(canvas: HTMLCanvasElement): void {
   const { width: w, height: h } = canvas;
   const { x, y, size } = detectGeminiWatermark(w, h);
 
-  // Sample surrounding area to inpaint — use pixels from just outside the watermark region
-  // Strategy: fill with averaged pixels from a border band around the watermark
-  const pad = Math.round(size * 0.4);
-  const srcX = Math.max(0, x - pad);
-  const srcY = Math.max(0, y - pad);
-  const srcW = Math.min(w - srcX, size + pad * 2);
-  const srcH = Math.min(h - srcY, size + pad * 2);
+  // Strategy: the Gemini watermark is a semi-transparent white/colored logo blended onto
+  // the image using screen-like blending. The cleanest removal approach is to reconstruct
+  // the background under it by sampling from a same-size patch just above the watermark,
+  // which shares the same background context (no logo there).
+  // We blend 3 reference patches (above, left, and diagonal) for best coverage.
 
-  const srcData = ctx.getImageData(srcX, srcY, srcW, srcH);
-  const targetData = ctx.getImageData(x, y, size, size);
+  const refPatches: { sx: number; sy: number; weight: number }[] = [];
 
-  // For each pixel in the watermark area, blend from surrounding non-watermark pixels
-  for (let py = 0; py < size; py++) {
-    for (let px = 0; px < size; px++) {
-      // Collect neighbor samples from outside the watermark region
-      const samples: number[][] = [];
-
-      for (let dy = -pad; dy <= size + pad; dy += 2) {
-        for (let dx = -pad; dx <= size + pad; dx += 2) {
-          if (dx >= 0 && dx < size && dy >= 0 && dy < size) continue; // skip interior
-          const sx = (px + dx - (-pad));
-          const sy = (py + dy - (-pad));
-          if (sx < 0 || sy < 0 || sx >= srcW || sy >= srcH) continue;
-          const i = (sy * srcW + sx) * 4;
-          samples.push([srcData.data[i], srcData.data[i + 1], srcData.data[i + 2], srcData.data[i + 3]]);
-        }
-      }
-
-      if (samples.length === 0) continue;
-
-      // Average neighbors
-      const r = samples.reduce((s, c) => s + c[0], 0) / samples.length;
-      const g = samples.reduce((s, c) => s + c[1], 0) / samples.length;
-      const b = samples.reduce((s, c) => s + c[2], 0) / samples.length;
-
-      const ti = (py * size + px) * 4;
-      targetData.data[ti] = Math.round(r);
-      targetData.data[ti + 1] = Math.round(g);
-      targetData.data[ti + 2] = Math.round(b);
-      targetData.data[ti + 3] = 255;
-    }
+  // Patch above the watermark
+  if (y - size >= 0) {
+    refPatches.push({ sx: x, sy: y - size, weight: 1.0 });
+  }
+  // Patch to the left of the watermark
+  if (x - size >= 0) {
+    refPatches.push({ sx: x - size, sy: y, weight: 1.0 });
+  }
+  // Patch above-left
+  if (x - size >= 0 && y - size >= 0) {
+    refPatches.push({ sx: x - size, sy: y - size, weight: 0.5 });
+  }
+  // Fallback: patch directly above (larger offset)
+  if (refPatches.length === 0 && y - size * 2 >= 0) {
+    refPatches.push({ sx: x, sy: y - size * 2, weight: 1.0 });
   }
 
-  ctx.putImageData(targetData, x, y);
+  if (refPatches.length === 0) {
+    // Last resort: fill with solid color sampled from just above
+    const fallbackY = Math.max(0, y - 4);
+    const sample = ctx.getImageData(x, fallbackY, size, 1);
+    const fillData = ctx.createImageData(size, size);
+    for (let py = 0; py < size; py++) {
+      for (let px = 0; px < size; px++) {
+        const si = px * 4;
+        const di = (py * size + px) * 4;
+        fillData.data[di] = sample.data[si];
+        fillData.data[di + 1] = sample.data[si + 1];
+        fillData.data[di + 2] = sample.data[si + 2];
+        fillData.data[di + 3] = 255;
+      }
+    }
+    ctx.putImageData(fillData, x, y);
+    return;
+  }
+
+  // Read all reference patches
+  const patchData = refPatches.map((p) => ({
+    data: ctx.getImageData(p.sx, p.sy, size, size),
+    weight: p.weight,
+  }));
+
+  const totalWeight = patchData.reduce((s, p) => s + p.weight, 0);
+  const result = ctx.createImageData(size, size);
+
+  for (let i = 0; i < size * size * 4; i += 4) {
+    let r = 0, g = 0, b = 0;
+    for (const patch of patchData) {
+      r += patch.data.data[i] * patch.weight;
+      g += patch.data.data[i + 1] * patch.weight;
+      b += patch.data.data[i + 2] * patch.weight;
+    }
+    result.data[i] = Math.round(r / totalWeight);
+    result.data[i + 1] = Math.round(g / totalWeight);
+    result.data[i + 2] = Math.round(b / totalWeight);
+    result.data[i + 3] = 255;
+  }
+
+  ctx.putImageData(result, x, y);
 }
 
 function removeNotebookLMWatermark(canvas: HTMLCanvasElement): void {
