@@ -21,6 +21,7 @@ import {
   Moon,
   Settings,
   Lightbulb,
+  Scissors,
 } from "lucide-react";
 
 interface NavItem {
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { label: "Library", href: "/library", icon: BookOpen },
   { label: "Challenges", href: "/challenges", icon: Trophy },
   { label: "Concept Creator", href: "/concept-creator", icon: Lightbulb },
+  { label: "Remove BG", href: "/remove-bg", icon: Scissors },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
 ];
 
