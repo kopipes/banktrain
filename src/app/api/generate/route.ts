@@ -12,6 +12,7 @@ import { saveImage } from "@/lib/storage";
 import { logTelemetry } from "@/lib/telemetry";
 import { z } from "zod";
 import OpenAI from "openai";
+import { appendProvaliantQuality } from "@/lib/provaliant-prompts";
 
 const generateSchema = z.object({
   fullPrompt: z.string().min(1),
@@ -48,6 +49,17 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
 
+  // Enrich prompt with Provaliant quality standards
+  const { enrichedPrompt, enrichedNegative } = appendProvaliantQuality(
+    data.fullPrompt,
+    data.negativePrompt
+  );
+  const enrichedData = {
+    ...data,
+    fullPrompt: enrichedPrompt,
+    negativePrompt: enrichedNegative,
+  };
+
   // Run quota check and model fetch in parallel — neither depends on the other
   const [quota, model] = await Promise.all([
     checkQuota(user.division ?? "general"),
@@ -73,48 +85,48 @@ export async function POST(req: NextRequest) {
     id: genId,
     userId: user.id,
     modelId: model.id,
-    subject: data.subject,
-    action: data.action,
-    environment: data.environment,
-    lighting: data.lighting,
-    style: data.style,
-    colorPalette: data.colorPalette,
-    negativePrompt: data.negativePrompt,
-    fullPrompt: data.fullPrompt,
+    subject: enrichedData.subject,
+    action: enrichedData.action,
+    environment: enrichedData.environment,
+    lighting: enrichedData.lighting,
+    style: enrichedData.style,
+    colorPalette: enrichedData.colorPalette,
+    negativePrompt: enrichedData.negativePrompt,
+    fullPrompt: enrichedData.fullPrompt,
     seed: resolvedSeed,
-    cfgScale: data.cfgScale,
-    steps: data.steps,
-    aspectRatio: data.aspectRatio,
-    isPublic: data.isPublic,
+    cfgScale: enrichedData.cfgScale,
+    steps: enrichedData.steps,
+    aspectRatio: enrichedData.aspectRatio,
+    isPublic: enrichedData.isPublic,
     status: "pending",
   });
 
   try {
     let imageData: string; // base64
     let rawApiResponse: Record<string, unknown> = {};
-    const [w, h] = aspectRatioToDimensions(data.aspectRatio);
+    const [w, h] = aspectRatioToDimensions(enrichedData.aspectRatio);
 
     if (model.provider === "kie.ai") {
       // ── kie.ai async task/poll flow ─────────────────────────────────────────
-      const isImg2Img = data.generationType === "image-to-image";
+      const isImg2Img = enrichedData.generationType === "image-to-image";
 
       // Build input payload — image-to-image needs input_urls
       const kieInput: Record<string, unknown> = {
-        prompt: data.fullPrompt,
-        aspect_ratio: data.aspectRatio ?? "1:1",
+        prompt: enrichedData.fullPrompt,
+        aspect_ratio: enrichedData.aspectRatio ?? "1:1",
         resolution: "1K",
       };
 
-      if (isImg2Img && data.inputImageUrl) {
+      if (isImg2Img && enrichedData.inputImageUrl) {
         // kie.ai accepts either a URL array or base64 — we send as URL array
         // If it's a base64 data URL, upload to storage first then send the URL
-        if (data.inputImageUrl.startsWith("data:")) {
-          const base64 = data.inputImageUrl.split(",")[1];
+        if (enrichedData.inputImageUrl.startsWith("data:")) {
+          const base64 = enrichedData.inputImageUrl.split(",")[1];
           const inputKey = `input_${genId}.png`;
           const { url: inputUrl } = await saveImage(base64, inputKey);
           kieInput.input_urls = [inputUrl];
         } else {
-          kieInput.input_urls = [data.inputImageUrl];
+          kieInput.input_urls = [enrichedData.inputImageUrl];
         }
       }
 
@@ -200,7 +212,7 @@ export async function POST(req: NextRequest) {
 
       const response = await client.images.generate({
         model: model.modelId,
-        prompt: data.fullPrompt,
+        prompt: enrichedData.fullPrompt,
         n: 1,
         size: `${w}x${h}` as Parameters<typeof client.images.generate>[0]["size"],
         response_format: "b64_json",
@@ -247,22 +259,22 @@ export async function POST(req: NextRequest) {
 
     // Fire-and-forget telemetry
     void logTelemetry(user.id, "generation_success", {
-      style: data.style,
-      aspectRatio: data.aspectRatio,
-      cfgScale: data.cfgScale,
-      steps: data.steps,
-      lighting: data.lighting,
-      environment: data.environment,
+      style: enrichedData.style,
+      aspectRatio: enrichedData.aspectRatio,
+      cfgScale: enrichedData.cfgScale,
+      steps: enrichedData.steps,
+      lighting: enrichedData.lighting,
+      environment: enrichedData.environment,
     });
 
     return NextResponse.json({
       id: genId,
       imageUrl: url,
-      fullPrompt: data.fullPrompt,
+      fullPrompt: enrichedData.fullPrompt,
       seed: resolvedSeed,
-      cfgScale: data.cfgScale,
-      steps: data.steps,
-      aspectRatio: data.aspectRatio,
+      cfgScale: enrichedData.cfgScale,
+      steps: enrichedData.steps,
+      aspectRatio: enrichedData.aspectRatio,
       totalTokens: tracking.totalTokens,
       costIdr: tracking.costIdr,
     });

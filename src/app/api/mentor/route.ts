@@ -5,18 +5,9 @@ import { aiModels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { trackTokenUsage } from "@/lib/token-tracker";
 import { z } from "zod";
+import { PROVALIANT_CREATIVE_DIRECTOR_SYSTEM_PROMPT } from "@/lib/provaliant-prompts";
 
-const CREATIVE_DIRECTOR_SYSTEM_PROMPT = `You are an expert Creative Director and AI Image Prompting Specialist.
-Your role is to help users craft precise, high-quality prompts for AI image generation.
-
-Guidelines:
-- Give concrete, actionable advice about prompt structure and word choice
-- Explain techniques like subject specificity, lighting vocabulary, style modifiers, and negative prompts
-- Reference the user's current prompt when they share it and suggest specific improvements
-- Keep responses concise and practical — max 3-4 sentences unless a detailed breakdown is requested
-- Use the PRD-aligned hybrid prompt structure: Subject → Action → Environment → Lighting → Style → Color Palette
-- Share examples of strong keywords and explain why they work
-- Be direct and technical — avoid vague platitudes`;
+const CREATIVE_DIRECTOR_SYSTEM_PROMPT = PROVALIANT_CREATIVE_DIRECTOR_SYSTEM_PROMPT;
 
 const mentorSchema = z.object({
   messages: z.array(

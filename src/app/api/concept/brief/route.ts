@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { aiModels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { PROVALIANT_THEME_CONTEXT } from "@/lib/provaliant-prompts";
 
 const briefSchema = z.object({
   brief: z.object({
@@ -41,13 +42,17 @@ export async function POST(req: NextRequest) {
   const isFreetext = briefMode === "freetext" && rawBrief && rawBrief.trim().length > 0;
 
   const prompt = isFreetext
-    ? `You are a senior event design consultant. Based on this raw event brief, suggest 5 compelling narrative themes for the event concept. Return ONLY a JSON array of 5 short theme names (2-5 words each), nothing else.
+    ? `${PROVALIANT_THEME_CONTEXT}
+
+Based on this raw event brief, suggest 5 compelling narrative themes for the event concept. Return ONLY a JSON array of 5 short theme names (2-5 words each), nothing else.
 
 Raw Brief:
 ${rawBrief}
 
 Return format: ["Theme 1", "Theme 2", "Theme 3", "Theme 4", "Theme 5"]`
-    : `You are a senior event design consultant. Based on this event brief, suggest 5 compelling narrative themes for the event concept. Return ONLY a JSON array of 5 short theme names (2-5 words each), nothing else.
+    : `${PROVALIANT_THEME_CONTEXT}
+
+Based on this event brief, suggest 5 compelling narrative themes for the event concept. Return ONLY a JSON array of 5 short theme names (2-5 words each), nothing else.
 
 Brief:
 - Event Name: ${brief.eventName}

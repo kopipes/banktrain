@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { saveImage } from "@/lib/storage";
 import { generateId } from "@/lib/utils";
+import { PROVALIANT_QUALITY_ENHANCERS, PROVALIANT_NEGATIVE_PROMPT } from "@/lib/provaliant-prompts";
 
 const generateSchema = z.object({
   imageModelId: z.string().min(1),
@@ -36,13 +37,16 @@ function buildImagePrompt(data: z.infer<typeof generateSchema>): string {
   const enabledComponents = data.components.filter((c) => c.enabled).map((c) => c.name).join(", ");
   const budgetNote = data.paradigm === "budget_fit" ? ", value-engineered, modular construction" : ", premium high-end design";
 
+  let base = "";
   if (data.type === "overall") {
-    return `Aerial bird's eye view architectural floor plan blueprint of an event venue, theme: ${data.theme}, event: ${data.brief.eventName}, brand colors: ${data.brief.brandColors}, zones: ${enabledComponents}, venue ${data.venue.venueWidth}x${data.venue.venueLength}m ${data.venue.venueType}${budgetNote}, clean technical illustration style, top-down view, labeled zones, professional event design`;
+    base = `Aerial bird's eye view architectural floor plan blueprint of an event venue, theme: ${data.theme}, event: ${data.brief.eventName}, brand colors: ${data.brief.brandColors}, zones: ${enabledComponents}, venue ${data.venue.venueWidth}x${data.venue.venueLength}m ${data.venue.venueType}${budgetNote}, clean technical illustration style, top-down view, labeled zones, professional event design`;
+  } else if (data.type === "booth") {
+    base = `3D render of a 4x4m modular exhibition booth, theme: ${data.theme}, brand: ${data.brief.brandName}, brand colors: ${data.brief.brandColors}${budgetNote}, detailed structural elements, custom illumination, photorealistic architectural visualization, human scale reference, buildable structure`;
+  } else {
+    base = `Professional 3D stage render, theme: ${data.theme}, event: ${data.brief.eventName}, brand colors: ${data.brief.brandColors}, ${data.brief.expectedAttendees} attendees capacity${budgetNote}, dramatic lighting, photorealistic architectural visualization, premium materials, commercial visualization`;
   }
-  if (data.type === "booth") {
-    return `3D render of a 4x4m modular exhibition booth, theme: ${data.theme}, brand: ${data.brief.brandName}, brand colors: ${data.brief.brandColors}${budgetNote}, detailed structural elements, custom illumination, photorealistic architectural visualization`;
-  }
-  return `Professional 3D stage render, theme: ${data.theme}, event: ${data.brief.eventName}, brand colors: ${data.brief.brandColors}, ${data.brief.expectedAttendees} attendees capacity${budgetNote}, dramatic lighting, photorealistic architectural visualization`;
+
+  return `${base}, ${PROVALIANT_QUALITY_ENHANCERS}`;
 }
 
 export async function POST(req: NextRequest) {

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { aiModels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { PROVALIANT_DECK_CONTEXT } from "@/lib/provaliant-prompts";
 
 const deckSchema = z.object({
   llmModelId: z.string().min(1),
@@ -39,7 +40,9 @@ export async function POST(req: NextRequest) {
     ? `- "budget": A slide titled "Budget & Feasibility" with a brief cost-benefit narrative`
     : "";
 
-  const prompt = `You are a senior event concept strategist. Generate a structured narrative pitch deck for this event.
+  const prompt = `${PROVALIANT_DECK_CONTEXT}
+
+Generate a structured narrative pitch deck for this event.
 
 Event: ${brief.eventName}
 Objective: ${brief.objective}
